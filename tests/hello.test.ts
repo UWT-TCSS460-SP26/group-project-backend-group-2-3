@@ -7,4 +7,10 @@ describe('Hello Route', () => {
     expect(response.status).toBe(200);
     expect(response.body.message).toBe('Hello, TCSS 460!');
   });
+
+  it('GET /hello/rudolf — returns personal greeting message', async () => {
+    const response = await request(app).get('/hello/rudolf');
+    expect(response.status).toBe(200);
+    expect(response.body.message).toBe('Hello, Rudolf!');
+  });
 });
