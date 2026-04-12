@@ -31,6 +31,10 @@ app.get('/hello/mani', (_request: Request, response: Response) => {
   response.json({ message: 'Hello Mani!' });
 });
 
+app.get('/hello/jonathan', (_request: Request, response: Response) => {
+  response.json({ message: 'Hello, Jonathan!' });
+});
+
 // 404 handler — must be after all routes
 app.use((_request: Request, response: Response) => {
   response.status(404).json({ error: 'Route not found' });
