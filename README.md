@@ -1,4 +1,4 @@
-# TCSS 460 Group 2-3 Backend
+# TCSS 460 Group 2 Backend
 
 Express and TypeScript API for the Movie and TV Review Platform group project.
 
@@ -34,4 +34,3 @@ The server uses `PORT` from the environment and defaults to `3000`.
 
 `https://group-2-9289.onrender.com/`
 
-Replace the placeholder above with your real deployed backend URL before submission.
