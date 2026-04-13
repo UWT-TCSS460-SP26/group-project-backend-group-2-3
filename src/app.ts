@@ -3,7 +3,7 @@ import cors from 'cors';
 import fs from 'fs';
 import YAML from 'yaml';
 import { apiReference } from '@scalar/express-api-reference';
-
+import collinsRouter from './routes/collins.routes';
 const app = express();
 
 // Application-level middleware
@@ -26,6 +26,16 @@ app.get('/hello', (_request: Request, response: Response) => {
 app.get('/hello/rudolf', (_request: Request, response: Response) => {
   response.json({ message: 'Hello, Rudolf!' });
 });
+
+app.get('/hello/mani', (_request: Request, response: Response) => {
+  response.json({ message: 'Hello Mani!' });
+});
+
+app.get('/hello/jonathan', (_request: Request, response: Response) => {
+  response.json({ message: 'Hello, Jonathan!' });
+});
+
+app.use('/', collinsRouter);
 
 app.get('/hello/rudolf-practice', (_request: Request, response: Response) => {
   response.json({ message: 'Hello again, Rudolf!' });
