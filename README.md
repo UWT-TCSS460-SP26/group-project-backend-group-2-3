@@ -33,4 +33,3 @@ The server uses `PORT` from the environment and defaults to `3000`.
 ## Deployed URL
 
 `https://group-2-9289.onrender.com/`
-
