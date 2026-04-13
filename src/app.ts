@@ -3,7 +3,7 @@ import cors from 'cors';
 import fs from 'fs';
 import YAML from 'yaml';
 import { apiReference } from '@scalar/express-api-reference';
-
+import collinsRouter from './routes/collins.routes';
 const app = express();
 
 // Application-level middleware
@@ -34,6 +34,8 @@ app.get('/hello/mani', (_request: Request, response: Response) => {
 app.get('/hello/jonathan', (_request: Request, response: Response) => {
   response.json({ message: 'Hello, Jonathan!' });
 });
+
+app.use('/', collinsRouter);
 
 // 404 handler — must be after all routes
 app.use((_request: Request, response: Response) => {
