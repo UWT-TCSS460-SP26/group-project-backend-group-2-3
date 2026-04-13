@@ -13,4 +13,10 @@ describe('Hello Route', () => {
     expect(response.status).toBe(200);
     expect(response.body.message).toBe('Hello, Rudolf!');
   });
+
+  it('GET /hello/rudolf-practice — returns temporary practice greeting', async () => {
+    const response = await request(app).get('/hello/rudolf-practice');
+    expect(response.status).toBe(200);
+    expect(response.body.message).toBe('Hello again, Rudolf!');
+  });
 });

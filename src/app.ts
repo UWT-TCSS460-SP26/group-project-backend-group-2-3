@@ -37,6 +37,10 @@ app.get('/hello/jonathan', (_request: Request, response: Response) => {
 
 app.use('/', collinsRouter);
 
+app.get('/hello/rudolf-practice', (_request: Request, response: Response) => {
+  response.json({ message: 'Hello again, Rudolf!' });
+});
+
 // 404 handler — must be after all routes
 app.use((_request: Request, response: Response) => {
   response.status(404).json({ error: 'Route not found' });
