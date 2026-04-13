@@ -1,23 +1,22 @@
-# TCSS 460 — Group Project Backend
+# TCSS 460 Group 2-3 Backend
 
-Express + TypeScript API for the TCSS 460 group project.
+Express and TypeScript API for the Movie and TV Review Platform group project.
+
+## Sprint 0 Endpoints
+
+- Heartbeat: `GET /health`
+- API docs: `GET /api-docs`
+
+Local docs are available at [http://localhost:3000/api-docs](http://localhost:3000/api-docs).
 
 ## Quick Start
 
 ```bash
-# Install dependencies
 npm install
-
-# Copy environment file
-cp .env.example .env
-
-# Start development server (auto-reloads on changes)
 npm run dev
 ```
 
-The server starts at [http://localhost:3000](http://localhost:3000).
-
-API documentation is at [http://localhost:3000/api-docs](http://localhost:3000/api-docs).
+The server uses `PORT` from the environment and defaults to `3000`.
 
 ## Scripts
 
@@ -33,4 +32,6 @@ API documentation is at [http://localhost:3000/api-docs](http://localhost:3000/a
 
 ## Deployed URL
 
-[Add your deployed URL here]
+`https://group-2-9289.onrender.com/`
+
+Replace the placeholder above with your real deployed backend URL before submission.
