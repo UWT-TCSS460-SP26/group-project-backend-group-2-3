@@ -1,35 +1,42 @@
 openapi: 3.0.3
 info:
-  title: TCSS 460 Group Project API
+  title: Group 2 Movie and TV Review API
   description: |
-    **Team:** [Your Team Name]
-    **Deployed URL:** [Your deployed URL]
+    Backend API for TCSS 460 Group 2.
 
-    A RESTful API for the TCSS 460 group project.
+    Sprint 0 exposes a public heartbeat endpoint and API documentation.
   version: 0.1.0
 
 servers:
   - url: http://localhost:3000
     description: Local development
+  - url: https://group-2-9289.onrender.com/
+    description: Production deployment
 
 tags:
-  - name: General
-    description: General-purpose routes
+  - name: Health
+    description: Public service status routes
 
 paths:
-  /hello:
+  /health:
     get:
-      tags: [General]
-      summary: Hello
-      description: Returns a greeting message.
+      tags: [Health]
+      summary: Heartbeat
+      description: Returns a simple JSON response confirming the API is running.
       responses:
         '200':
-          description: A greeting message
+          description: Service is healthy
           content:
             application/json:
               schema:
                 type: object
                 properties:
-                  message:
+                  status:
                     type: string
-                    example: 'Hello, TCSS 460!'
+                    example: ok
+                  service:
+                    type: string
+                    example: group-project-backend-group-2
+                required:
+                  - status
+                  - service
