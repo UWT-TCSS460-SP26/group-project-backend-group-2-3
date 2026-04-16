@@ -1,6 +1,7 @@
 import js from '@eslint/js';
 import tsPlugin from '@typescript-eslint/eslint-plugin';
 import tsParser from '@typescript-eslint/parser';
+import prettierConfig from 'eslint-config-prettier';
 
 export default [
   js.configs.recommended,
@@ -11,6 +12,7 @@ export default [
       parserOptions: {
         ecmaVersion: 2022,
         sourceType: 'module',
+        project: './tsconfig.eslint.json',
       },
       globals: {
         console: 'readonly',
@@ -32,6 +34,10 @@ export default [
         'warn',
         { argsIgnorePattern: '^_', varsIgnorePattern: '^_', caughtErrorsIgnorePattern: '^_' },
       ],
+      '@typescript-eslint/no-floating-promises': 'error',
+      eqeqeq: ['error', 'always'],
+      'prefer-const': 'error',
+      'no-console': 'warn',
     },
   },
   {
@@ -41,6 +47,7 @@ export default [
       parserOptions: {
         ecmaVersion: 2022,
         sourceType: 'module',
+        project: './tsconfig.eslint.json',
       },
       globals: {
         console: 'readonly',
@@ -66,9 +73,14 @@ export default [
         'warn',
         { argsIgnorePattern: '^_', varsIgnorePattern: '^_', caughtErrorsIgnorePattern: '^_' },
       ],
+      '@typescript-eslint/no-floating-promises': 'error',
+      eqeqeq: ['error', 'always'],
+      'prefer-const': 'error',
+      'no-console': 'warn',
     },
   },
   {
     ignores: ['dist/', 'node_modules/', 'coverage/', 'jest.config.js'],
   },
+  prettierConfig,
 ];
