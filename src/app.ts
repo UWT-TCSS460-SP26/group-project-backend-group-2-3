@@ -3,6 +3,9 @@ import cors from 'cors';
 import fs from 'fs';
 import YAML from 'yaml';
 import { apiReference } from '@scalar/express-api-reference';
+import { moviesRouter } from './routes/movies';
+import { showsRouter } from './routes/shows';
+import { errorHandler } from './middleware/error-handler';
 
 const app = express();
 
@@ -26,9 +29,16 @@ app.get('/health', (_request: Request, response: Response) => {
   });
 });
 
+// API routes
+app.use('/movies', moviesRouter);
+app.use('/shows', showsRouter);
+
 // 404 handler — must be after all routes
 app.use((_request: Request, response: Response) => {
   response.status(404).json({ error: 'Route not found' });
 });
+
+// Error handler — must be after all routes and other middleware
+app.use(errorHandler);
 
 export { app };
