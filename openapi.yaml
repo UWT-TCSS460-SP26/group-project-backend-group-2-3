@@ -16,6 +16,8 @@ servers:
 tags:
   - name: Health
     description: Public service status routes
+  - name: Shows
+    description: TV show discovery routes
 
 paths:
   /health:
@@ -40,3 +42,185 @@ paths:
                 required:
                   - status
                   - service
+  /shows/search:
+    get:
+      tags: [Shows]
+      summary: Search shows
+      description: Searches TMDB TV shows by title.
+      parameters:
+        - in: query
+          name: q
+          required: true
+          description: Show title to search for.
+          schema:
+            type: string
+            minLength: 1
+            example: lost
+        - in: query
+          name: page
+          required: false
+          description: Positive integer page number.
+          schema:
+            type: integer
+            minimum: 1
+            example: 1
+      responses:
+        '200':
+          description: Matching shows
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MediaListResponse'
+              examples:
+                success:
+                  value:
+                    page: 1
+                    totalPages: 2
+                    totalResults: 40
+                    results:
+                      - id: 4607
+                        title: Lost
+                        year: 2004
+                        posterUrl: https://image.tmdb.org/t/p/w500/ogbwjg3we0UppYjVJwVH15BReqA.jpg
+                        overview: The survivors of a plane crash are forced to work together in order to survive on a seemingly deserted tropical island.
+                        mediaType: show
+        '400':
+          description: Invalid query parameters
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiErrorResponse'
+              examples:
+                missingQuery:
+                  value:
+                    error: q is required
+                invalidPage:
+                  value:
+                    error: page must be a positive integer
+        '502':
+          description: Upstream TMDB error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiErrorResponse'
+              examples:
+                upstreamFailure:
+                  value:
+                    error: Internal server error
+  /shows/popular:
+    get:
+      tags: [Shows]
+      summary: Popular shows
+      description: Returns popular TMDB TV shows.
+      parameters:
+        - in: query
+          name: page
+          required: false
+          description: Positive integer page number.
+          schema:
+            type: integer
+            minimum: 1
+            example: 1
+      responses:
+        '200':
+          description: Popular shows
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MediaListResponse'
+              examples:
+                success:
+                  value:
+                    page: 1
+                    totalPages: 1000
+                    totalResults: 20000
+                    results:
+                      - id: 95557
+                        title: Invincible
+                        year: 2021
+                        posterUrl: https://image.tmdb.org/t/p/w500/yDWJYRAwMNKbIYT8ZB33qy84uzO.jpg
+                        overview: An adult animated series based on the Skybound/Image comic about a teenager whose father is the most powerful superhero on the planet.
+                        mediaType: show
+        '400':
+          description: Invalid query parameters
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiErrorResponse'
+              examples:
+                invalidPage:
+                  value:
+                    error: page must be a positive integer
+        '502':
+          description: Upstream TMDB error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiErrorResponse'
+              examples:
+                upstreamFailure:
+                  value:
+                    error: Internal server error
+
+components:
+  schemas:
+    ApiErrorResponse:
+      type: object
+      properties:
+        error:
+          type: string
+          example: page must be a positive integer
+      required:
+        - error
+    MediaListItem:
+      type: object
+      properties:
+        id:
+          type: integer
+          example: 4607
+        title:
+          type: string
+          example: Lost
+        year:
+          type: integer
+          nullable: true
+          example: 2004
+        posterUrl:
+          type: string
+          nullable: true
+          example: https://image.tmdb.org/t/p/w500/ogbwjg3we0UppYjVJwVH15BReqA.jpg
+        overview:
+          type: string
+          example: The survivors of a plane crash are forced to work together in order to survive on a seemingly deserted tropical island.
+        mediaType:
+          type: string
+          enum: [show]
+          example: show
+      required:
+        - id
+        - title
+        - year
+        - posterUrl
+        - overview
+        - mediaType
+    MediaListResponse:
+      type: object
+      properties:
+        page:
+          type: integer
+          example: 1
+        totalPages:
+          type: integer
+          example: 2
+        totalResults:
+          type: integer
+          example: 40
+        results:
+          type: array
+          items:
+            $ref: '#/components/schemas/MediaListItem'
+      required:
+        - page
+        - totalPages
+        - totalResults
+        - results
