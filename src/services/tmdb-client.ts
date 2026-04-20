@@ -11,10 +11,14 @@ import {
 
 type QueryValue = boolean | number | string | null | undefined;
 
-const buildTmdbUrl = (baseUrl: string, path: string, query: Record<string, QueryValue>): URL => {
+const buildTmdbUrl = (
+  baseUrl: string,
+  path: string,
+  query: Record<string, QueryValue>
+): globalThis.URL => {
   const normalizedBaseUrl = baseUrl.endsWith('/') ? baseUrl : `${baseUrl}/`;
   const normalizedPath = path.startsWith('/') ? path.slice(1) : path;
-  const url = new URL(normalizedPath, normalizedBaseUrl);
+  const url = new globalThis.URL(normalizedPath, normalizedBaseUrl);
 
   Object.entries(query).forEach(([key, value]) => {
     if (value !== undefined && value !== null && value !== '') {
@@ -33,7 +37,7 @@ const mapTmdbStatusToApiStatus = (statusCode: number): number => {
   return 502;
 };
 
-const readTmdbErrorMessage = async (response: Response): Promise<string> => {
+const readTmdbErrorMessage = async (response: globalThis.Response): Promise<string> => {
   try {
     const payload = (await response.json()) as TmdbErrorResponse;
     if (payload.status_message) {
