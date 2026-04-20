@@ -18,6 +18,8 @@ tags:
     description: Public service status routes
   - name: Shows
     description: TV show discovery routes
+  - name: Movies
+    description: Movie data routes proxied from TMDB
 
 paths:
   /health:
