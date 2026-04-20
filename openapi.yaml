@@ -12,7 +12,6 @@ servers:
   - url: http://localhost:3000
     description: Local development
 
-
 tags:
   - name: Health
     description: Service health checks
