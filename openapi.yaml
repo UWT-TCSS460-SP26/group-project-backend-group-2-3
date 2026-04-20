@@ -7,7 +7,7 @@ info:
     The API proxies TMDB and returns transformed responses.
 
 servers:
-  - url: https://group-2-9289.onrender.com/
+  - url: https://group-2-9289.onrender.com
     description: Production deployment
   - url: http://localhost:3000
     description: Local development
