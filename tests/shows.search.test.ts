@@ -91,16 +91,13 @@ describe('GET /shows/search', () => {
       expect(mockedTmdbClient.searchShows).not.toHaveBeenCalled();
     });
 
-    it.each(['0', '-1', 'abc', '1.5'])(
-      'returns 400 when page is invalid: %s',
-      async (page) => {
-        const response = await request(app).get('/shows/search').query({ q: 'lost', page });
+    it.each(['0', '-1', 'abc', '1.5'])('returns 400 when page is invalid: %s', async (page) => {
+      const response = await request(app).get('/shows/search').query({ q: 'lost', page });
 
-        expect(response.status).toBe(400);
-        expect(response.body).toEqual({ error: 'page must be a positive integer' });
-        expect(mockedTmdbClient.searchShows).not.toHaveBeenCalled();
-      },
-    );
+      expect(response.status).toBe(400);
+      expect(response.body).toEqual({ error: 'page must be a positive integer' });
+      expect(mockedTmdbClient.searchShows).not.toHaveBeenCalled();
+    });
   });
 
   describe('502 - upstream TMDB errors', () => {

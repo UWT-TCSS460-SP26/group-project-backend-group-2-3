@@ -75,16 +75,13 @@ describe('GET /shows/popular', () => {
   });
 
   describe('400 - invalid query parameters', () => {
-    it.each(['0', '-1', 'abc', '1.5'])(
-      'returns 400 when page is invalid: %s',
-      async (page) => {
-        const response = await request(app).get('/shows/popular').query({ page });
+    it.each(['0', '-1', 'abc', '1.5'])('returns 400 when page is invalid: %s', async (page) => {
+      const response = await request(app).get('/shows/popular').query({ page });
 
-        expect(response.status).toBe(400);
-        expect(response.body).toEqual({ error: 'page must be a positive integer' });
-        expect(mockedTmdbClient.getPopularShows).not.toHaveBeenCalled();
-      },
-    );
+      expect(response.status).toBe(400);
+      expect(response.body).toEqual({ error: 'page must be a positive integer' });
+      expect(mockedTmdbClient.getPopularShows).not.toHaveBeenCalled();
+    });
   });
 
   describe('502 - upstream TMDB errors', () => {

@@ -46,10 +46,7 @@ const readTmdbErrorMessage = async (response: Response): Promise<string> => {
   return `TMDB request failed with status ${response.status}`;
 };
 
-const fetchTmdb = async <T>(
-  path: string,
-  query: Record<string, QueryValue> = {},
-): Promise<T> => {
+const fetchTmdb = async <T>(path: string, query: Record<string, QueryValue> = {}): Promise<T> => {
   const config = getTmdbConfig();
   const url = buildTmdbUrl(config.baseUrl, path, {
     ...query,
@@ -99,7 +96,7 @@ export const tmdbClient = {
 
   searchMovies: async (
     searchQuery: string,
-    page = 1,
+    page = 1
   ): Promise<TmdbListResponse<TmdbMovieListResult>> => {
     const { defaultLanguage } = getTmdbConfig();
     return fetchTmdb<TmdbListResponse<TmdbMovieListResult>>('/search/movie', {
@@ -111,7 +108,7 @@ export const tmdbClient = {
 
   searchShows: async (
     searchQuery: string,
-    page = 1,
+    page = 1
   ): Promise<TmdbListResponse<TmdbShowListResult>> => {
     const { defaultLanguage } = getTmdbConfig();
     return fetchTmdb<TmdbListResponse<TmdbShowListResult>>('/search/tv', {

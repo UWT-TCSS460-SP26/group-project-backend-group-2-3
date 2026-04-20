@@ -4,7 +4,6 @@ import { extractYear } from '../utils/extract-year';
 import { buildTmdbImageUrl } from '../utils/tmdb-image';
 // Shared transformers for converting TMDB show list responses into API list items.
 
-
 /**
  * Maps a single TMDB TV list result into the shared API media list item shape.
  * Converts `name` to `title`, extracts `year` from `first_air_date`,
