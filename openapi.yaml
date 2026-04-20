@@ -18,6 +18,8 @@ tags:
     description: Public service status routes
   - name: Movies
     description: Movie data routes proxied from TMDB
+  - name: Shows
+    description: TV show data routes proxied from TMDB
 
 paths:
   /health:
@@ -159,3 +161,131 @@ paths:
                   - error
               example:
                 error: TMDB request failed with status 500
+
+  /shows/{id}:
+    get:
+      tags: [Shows]
+      summary: Get TV show details by TMDB ID
+      description: Returns a transformed show detail response for a single TV series.
+      parameters:
+        - in: path
+          name: id
+          required: true
+          description: Positive TMDB TV show ID.
+          schema:
+            type: integer
+            minimum: 1
+            example: 1396
+      responses:
+        '200':
+          description: TV show details
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  id:
+                    type: integer
+                    example: 1396
+                  title:
+                    type: string
+                    example: Breaking Bad
+                  year:
+                    type: integer
+                    nullable: true
+                    example: 2008
+                  posterUrl:
+                    type: string
+                    nullable: true
+                    example: https://image.tmdb.org/t/p/w500/poster.jpg
+                  backdropUrl:
+                    type: string
+                    nullable: true
+                    example: https://image.tmdb.org/t/p/w780/backdrop.jpg
+                  overview:
+                    type: string
+                    example: A high school chemistry teacher turned methamphetamine manufacturer.
+                  genres:
+                    type: array
+                    items:
+                      type: string
+                    example: [Drama]
+                  seasonCount:
+                    type: integer
+                    example: 5
+                  episodeCount:
+                    type: integer
+                    example: 62
+                  status:
+                    type: string
+                    example: Ended
+                  rating:
+                    type: number
+                    format: float
+                    example: 8.9
+                required:
+                  - id
+                  - title
+                  - year
+                  - posterUrl
+                  - backdropUrl
+                  - overview
+                  - genres
+                  - seasonCount
+                  - episodeCount
+                  - status
+                  - rating
+              example:
+                id: 1396
+                title: Breaking Bad
+                year: 2008
+                posterUrl: https://image.tmdb.org/t/p/w500/poster.jpg
+                backdropUrl: https://image.tmdb.org/t/p/w780/backdrop.jpg
+                overview: A high school chemistry teacher turned methamphetamine manufacturer.
+                genres: [Drama]
+                seasonCount: 5
+                episodeCount: 62
+                status: Ended
+                rating: 8.9
+        '404':
+          description: Show not found or invalid show ID
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                    example: Show not found
+                required:
+                  - error
+              examples:
+                invalidId:
+                  summary: Invalid path parameter
+                  value:
+                    error: Show not found
+                notFound:
+                  summary: Valid ID with no matching TMDB TV show
+                  value:
+                    error: The resource you requested could not be found.
+        '502':
+          description: Upstream TMDB request failure
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                    example: TMDB request failed
+                required:
+                  - error
+              examples:
+                upstreamError:
+                  summary: TMDB returned an error status
+                  value:
+                    error: TMDB request failed with status 500
+                genericUpstreamFailure:
+                  summary: Network or unexpected failure when calling TMDB
+                  value:
+                    error: TMDB request failed
