@@ -22,3 +22,6 @@ yarn-error.log
 
 # Coverage
 coverage/
+
+# Claude Code
+CLAUDE.md

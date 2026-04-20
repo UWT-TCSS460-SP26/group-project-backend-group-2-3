@@ -1,6 +1,7 @@
 import { Router, Request, Response, NextFunction } from 'express';
 import { getTmdbConfig } from '../config/env';
 import { HttpError } from '../errors/http-error';
+import { getPopularMovies, searchMovies } from '../controllers/movies';
 import { tmdbClient } from '../services/tmdb-client';
 import { MovieDetailResponse, TmdbMovieDetails } from '../types/media';
 import { extractYear } from '../utils/extract-year';
@@ -35,14 +36,10 @@ const mapMovieDetails = (movie: TmdbMovieDetails): MovieDetailResponse => {
 };
 
 // GET /movies/search?q={title}&page={number}
-router.get('/search', (_request: Request, _response: Response, next: NextFunction) => {
-  next(new HttpError(501, 'Not Implemented'));
-});
+router.get('/search', searchMovies);
 
 // GET /movies/popular?page={number}
-router.get('/popular', (_request: Request, _response: Response, next: NextFunction) => {
-  next(new HttpError(501, 'Not Implemented'));
-});
+router.get('/popular', getPopularMovies);
 
 // GET /movies/:id
 router.get('/:id', async (request: Request, response: Response, next: NextFunction) => {
