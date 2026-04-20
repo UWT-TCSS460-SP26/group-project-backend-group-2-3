@@ -101,3 +101,33 @@ If anyone cannot make it, the group will take notes so the person who missed the
 Wrap-up:
 
 The group finished setting initial team roles, communication expectations, meeting availability, and collaboration plans for Sprint 0 and future sprints.
+
+## Sprint 1 Planning and Execution Notes (Apr 14 - Apr 20, 2026)
+
+### Sprint 1 ceremonies
+
+- Sprint planning sync was held at the start of the sprint to confirm scope, route ownership, and integration order.
+- Mid-sprint checkpoints were used to report progress, identify blockers early, and rebalance workload when needed.
+- End-of-sprint integration review was used to confirm API behavior, tests, and documentation before sign-off.
+
+### Sprint 1 task split (high-level)
+
+- Rudolf owned foundation and integration-heavy scope (environment/config setup, shared client and middleware scaffolding, movie detail route implementation, movie detail tests/docs, final integration checks, and deployment smoke-test coordination).
+- Collins owned movie search/popular route implementation, related tests, and corresponding API documentation updates.
+- Mani owned show search/popular route implementation, related tests, and corresponding API documentation updates.
+- Jonathan owned show detail implementation, detail route testing, and final API documentation consistency review.
+
+### Timeline and dependency flow
+
+- Early sprint: foundation work was completed first so all feature branches could build on shared config, utilities, and error handling.
+- Mid sprint: movie and show endpoint implementation proceeded in parallel after foundation dependencies were in place.
+- Late sprint: test coverage and endpoint documentation were completed after route behavior stabilized.
+- Final sprint window: all feature outputs were integrated in sequence, followed by full local verification/readiness checks and deployment smoke-test planning as the sprint completion gate.
+
+### Blockers, risks, and decisions
+
+- Blocker encountered: OpenAPI merge/integration conflicts produced a malformed spec, which interrupted integration verification.
+- Risk identified: inconsistent API contract behavior across branches during merge windows (especially docs vs. implementation drift).
+- Team decision: keep a single OpenAPI source of truth aligned to implemented route behavior before final sign-off.
+- Team decision: keep error response shape consistent as `{ "error": "..." }` across routes and tests.
+- Team decision: do final integration gating with a full local test pass before closing sprint completion tasks.
