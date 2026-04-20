@@ -7,10 +7,11 @@ info:
     The API proxies TMDB and returns transformed responses.
 
 servers:
-  - url: http://localhost:3000
-    description: Local development
   - url: https://group-2-9289.onrender.com/
     description: Production deployment
+  - url: http://localhost:3000
+    description: Local development
+
 
 tags:
   - name: Health
