@@ -3,8 +3,8 @@ import cors from 'cors';
 import fs from 'fs';
 import YAML from 'yaml';
 import { apiReference } from '@scalar/express-api-reference';
-import { moviesRouter } from './routes/movies';
-import { showsRouter } from './routes/shows';
+import { v1Router } from './routes/v1';
+import { v2Router } from './routes/v2';
 import { errorHandler } from './middleware/error-handler';
 
 const app = express();
@@ -30,8 +30,11 @@ app.get('/health', (_request: Request, response: Response) => {
 });
 
 // API routes
-app.use('/movies', moviesRouter);
-app.use('/shows', showsRouter);
+app.use('/api/v1', v1Router);
+app.use('/api/v2', v2Router);
+
+// Temporary backward-compatible aliases while clients migrate to versioned routes.
+app.use('/', v1Router);
 
 // 404 handler — must be after all routes
 app.use((_request: Request, response: Response) => {
