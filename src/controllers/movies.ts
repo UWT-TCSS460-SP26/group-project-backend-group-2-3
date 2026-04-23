@@ -13,9 +13,12 @@ import { buildTmdbImageUrl } from '../utils/tmdb-image';
 import {
   MediaListItem,
   MediaListResponse,
+  MovieDetailResponse,
   TmdbListResponse,
+  TmdbMovieDetails,
   TmdbMovieListResult,
 } from '../types/media';
+import { parsePositiveIntegerPathParam } from '../utils/validation';
 
 // Takes one raw TMDB movie object and one base URL string, returns one clean MediaListItem
 export const toMovieListItem = (
@@ -45,6 +48,22 @@ export const toMovieListResponse = (
   results: raw.results.map((item) => toMovieListItem(item, imageBaseUrl)),
   totalPages: raw.total_pages, // TMDB uses snake_case — your API uses camelCase, renamed here
   totalResults: raw.total_results, // same rename: total_results → totalResults
+});
+
+export const toMovieDetailResponse = (
+  raw: TmdbMovieDetails,
+  imageBaseUrl: string
+): MovieDetailResponse => ({
+  backdropUrl: buildTmdbImageUrl(imageBaseUrl, raw.backdrop_path, 'w780'),
+  genres: raw.genres.map((genre) => genre.name),
+  id: raw.id,
+  overview: raw.overview,
+  posterUrl: buildTmdbImageUrl(imageBaseUrl, raw.poster_path, 'w500'),
+  rating: raw.vote_average,
+  runtimeMinutes: raw.runtime ?? null,
+  status: raw.status,
+  title: raw.title,
+  year: extractYear(raw.release_date),
 });
 
 export const searchMovies = async (
@@ -92,5 +111,25 @@ export const getPopularMovies = async (
     res.json(toMovieListResponse(data, imageBaseUrl)); // same transformer as search
   } catch (error) {
     next(error); // HttpError flows to errorHandler
+  }
+};
+
+export const getMovieDetails = async (
+  req: Request,
+  res: Response,
+  next: NextFunction
+): Promise<void> => {
+  const movieId = parsePositiveIntegerPathParam(req.params.id);
+  if (movieId === null) {
+    next(new HttpError(404, 'Movie not found'));
+    return;
+  }
+
+  try {
+    const { imageBaseUrl } = getTmdbConfig();
+    const movie = await tmdbClient.getMovieDetails(movieId);
+    res.status(200).json(toMovieDetailResponse(movie, imageBaseUrl));
+  } catch (error) {
+    next(error);
   }
 };
