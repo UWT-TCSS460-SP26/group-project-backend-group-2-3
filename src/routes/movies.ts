@@ -6,17 +6,9 @@ import { tmdbClient } from '../services/tmdb-client';
 import { MovieDetailResponse, TmdbMovieDetails } from '../types/media';
 import { extractYear } from '../utils/extract-year';
 import { buildTmdbImageUrl } from '../utils/tmdb-image';
+import { parsePositiveIntegerPathParam } from '../utils/validation';
 
 const router = Router();
-
-const parsePositiveInteger = (rawValue: string): number | null => {
-  const parsed = Number.parseInt(rawValue, 10);
-  if (!Number.isInteger(parsed) || parsed <= 0 || String(parsed) !== rawValue) {
-    return null;
-  }
-
-  return parsed;
-};
 
 const mapMovieDetails = (movie: TmdbMovieDetails): MovieDetailResponse => {
   const { imageBaseUrl } = getTmdbConfig();
@@ -43,8 +35,7 @@ router.get('/popular', getPopularMovies);
 
 // GET /movies/:id
 router.get('/:id', async (request: Request, response: Response, next: NextFunction) => {
-  const rawMovieId = Array.isArray(request.params.id) ? request.params.id[0] : request.params.id;
-  const movieId = rawMovieId ? parsePositiveInteger(rawMovieId) : null;
+  const movieId = parsePositiveIntegerPathParam(request.params.id);
   if (movieId === null) {
     next(new HttpError(404, 'Movie not found'));
     return;
