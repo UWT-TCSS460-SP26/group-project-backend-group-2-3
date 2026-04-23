@@ -29,11 +29,13 @@ app.get('/health', (_request: Request, response: Response) => {
   });
 });
 
-// API routes
+// Primary versioned API routes (checkoff-style)
+app.use('/v1', v1Router);
+app.use('/v2', v2Router);
+
+// Backward-compatible aliases while clients migrate.
 app.use('/api/v1', v1Router);
 app.use('/api/v2', v2Router);
-
-// Temporary backward-compatible aliases while clients migrate to versioned routes.
 app.use('/', v1Router);
 
 // 404 handler — must be after all routes
