@@ -1,17 +1,16 @@
 import { Router, Request, Response, NextFunction } from 'express';
-import { HttpError } from '../errors/http-error';
-import { tmdbClient } from '../services/tmdb-client';
-import { mapTmdbShowDetailsToShowDetail } from '../utils/map-tmdb-show-details';
+import { HttpError } from '../../errors/http-error';
+import { tmdbClient } from '../../services/tmdb-client';
+import { mapTmdbShowDetailsToShowDetail } from '../../utils/map-tmdb-show-details';
 import {
   parseOptionalPositiveIntegerQuery,
   parsePositiveIntegerPathParam,
   parseRequiredQueryString,
-} from '../utils/validation';
+} from '../../utils/validation';
+import { mapTmdbShowListItems } from '../../transformers/show-list';
 
-import { mapTmdbShowListItems } from '../transformers/show-list';
 const router = Router();
 
-// GET /shows/search?q={title}&page={number}
 router.get('/search', async (request: Request, response: Response, next: NextFunction) => {
   try {
     const searchQuery = parseRequiredQueryString(request.query.q, 'q is required');
@@ -33,7 +32,6 @@ router.get('/search', async (request: Request, response: Response, next: NextFun
   }
 });
 
-// GET /shows/popular?page={number}
 router.get('/popular', async (request: Request, response: Response, next: NextFunction) => {
   try {
     const page = parseOptionalPositiveIntegerQuery(
@@ -54,7 +52,6 @@ router.get('/popular', async (request: Request, response: Response, next: NextFu
   }
 });
 
-// GET /shows/:id
 router.get('/:id', async (request: Request, response: Response, next: NextFunction) => {
   const showId = parsePositiveIntegerPathParam(request.params.id);
   if (showId === null) {
