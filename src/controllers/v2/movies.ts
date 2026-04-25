@@ -83,13 +83,11 @@ export const getPopularMovies = async (
   response: Response,
   next: NextFunction
 ): Promise<void> => {
-  const page = request.query.page !== undefined ? Number(request.query.page) : 1;
-  if (!Number.isInteger(page) || page < 1) {
-    next(new HttpError(400, 'Query parameter page must be a positive integer'));
-    return;
-  }
-
   try {
+    const page = parseOptionalPositiveIntegerQuery(
+      request.query.page,
+      'Query parameter page must be a positive integer'
+    );
     const { imageBaseUrl } = getTmdbConfig();
     const data = await tmdbClient.getPopularMovies(page);
     response.json(toMovieListResponse(data, imageBaseUrl));
