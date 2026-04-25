@@ -14,8 +14,8 @@ describe('Versioned Route Mounts', () => {
     expect(response.body).toHaveProperty('error');
   });
 
-  it('GET /v2/shows/search without q returns 400 (route is mounted)', async () => {
-    const response = await request(app).get('/v2/shows/search');
+  it('GET /v2/tv-shows/search without q returns 400 (route is mounted)', async () => {
+    const response = await request(app).get('/v2/tv-shows/search');
     expect(response.status).toBe(400);
     expect(response.body).toHaveProperty('error');
   });
@@ -32,8 +32,8 @@ describe('Versioned Route Mounts', () => {
     expect(response.body).toHaveProperty('error');
   });
 
-  it('GET /api/v2/shows/search without q returns 400 (legacy alias still mounted)', async () => {
-    const response = await request(app).get('/api/v2/shows/search');
+  it('GET /api/v2/tv-shows/search without q returns 400 (legacy alias still mounted)', async () => {
+    const response = await request(app).get('/api/v2/tv-shows/search');
     expect(response.status).toBe(400);
     expect(response.body).toHaveProperty('error');
   });
