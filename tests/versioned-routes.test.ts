@@ -25,4 +25,10 @@ describe('Versioned Route Mounts', () => {
     expect(response.status).toBe(400);
     expect(response.body).toHaveProperty('error');
   });
+
+  it('GET /api/v2/tv-shows/search without title returns 400 (route is mounted)', async () => {
+    const response = await request(app).get('/api/v2/tv-shows/search');
+    expect(response.status).toBe(400);
+    expect(response.body).toEqual({ error: 'title is required' });
+  });
 });
