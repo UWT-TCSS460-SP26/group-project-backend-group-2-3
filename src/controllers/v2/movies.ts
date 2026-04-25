@@ -12,7 +12,11 @@ import {
   TmdbMovieDetails,
   TmdbMovieListResult,
 } from '../../types/media';
-import { parsePositiveIntegerPathParam } from '../../utils/validation';
+import {
+  parseOptionalPositiveIntegerQuery,
+  parsePositiveIntegerPathParam,
+  parseRequiredQueryString,
+} from '../../utils/validation';
 
 export const toMovieListItem = (
   raw: TmdbMovieListResult,
@@ -57,21 +61,17 @@ export const searchMovies = async (
   response: Response,
   next: NextFunction
 ): Promise<void> => {
-  const q = request.query.q;
-  if (!q || typeof q !== 'string') {
-    next(new HttpError(400, 'Query parameter q is required'));
-    return;
-  }
-
-  const page = request.query.page !== undefined ? Number(request.query.page) : 1;
-  if (!Number.isInteger(page) || page < 1) {
-    next(new HttpError(400, 'Query parameter page must be a positive integer'));
-    return;
-  }
-
   try {
+    const title = parseRequiredQueryString(
+      request.query.title,
+      'Query parameter title is required'
+    );
+    const page = parseOptionalPositiveIntegerQuery(
+      request.query.page,
+      'Query parameter page must be a positive integer'
+    );
     const { imageBaseUrl } = getTmdbConfig();
-    const data = await tmdbClient.searchMovies(q, page);
+    const data = await tmdbClient.searchMovies(title, page);
     response.json(toMovieListResponse(data, imageBaseUrl));
   } catch (error) {
     next(error);
