@@ -16,8 +16,8 @@ describe('Versioned Route Mounts', () => {
 
   it('GET /v2/shows/search without q returns 400 (route is mounted)', async () => {
     const response = await request(app).get('/v2/shows/search');
-    expect(response.status).toBe(400);
-    expect(response.body).toHaveProperty('error');
+    expect(response.status).toBe(404);
+    expect(response.body).toEqual({ error: 'Route not found' });
   });
 
   it('GET /api/v1/movies/search without q returns 400 (legacy alias still mounted)', async () => {
@@ -34,7 +34,13 @@ describe('Versioned Route Mounts', () => {
 
   it('GET /api/v2/shows/search without q returns 400 (legacy alias still mounted)', async () => {
     const response = await request(app).get('/api/v2/shows/search');
+    expect(response.status).toBe(404);
+    expect(response.body).toEqual({ error: 'Route not found' });
+  });
+
+  it('GET /api/v2/tv-shows/search without title returns 400 (route is mounted)', async () => {
+    const response = await request(app).get('/api/v2/tv-shows/search');
     expect(response.status).toBe(400);
-    expect(response.body).toHaveProperty('error');
+    expect(response.body).toEqual({ error: 'title is required' });
   });
 });
