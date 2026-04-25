@@ -21,7 +21,10 @@ const router = Router();
  *   }
  *
  * Response:
- *   { "token": "<jwt>" }
+ *   {
+ *     "token": "<jwt>",
+ *     "user": { "id": 1, "username": "alice", "email": "alice@example.test", "role": "user" }
+ *   }
  *
  * The JWT payload contains:
  *   { sub: <user.id>, email: <user.email>, role: <user.role>, iat, exp }
@@ -73,7 +76,15 @@ router.post('/dev-login', async (request: Request, response: Response): Promise<
     { expiresIn: '24h' },
   );
 
-  response.json({ token });
+  response.json({
+    token,
+    user: {
+      id: user.id,
+      username: user.username,
+      email: user.email,
+      role: user.role,
+    },
+  });
 });
 
 export default router;
