@@ -29,6 +29,22 @@ Copy `.env.example` to `.env` for local development and fill in:
 Sprint 2 local auth is mounted at `POST /auth/dev-login`. It creates or reuses a local user
 and returns a JWT plus the user payload for testing protected routes.
 
+## Sprint 2 Database Setup
+
+After `DATABASE_URL` is configured, apply migrations and seed the local admin user:
+
+```bash
+npx prisma migrate dev
+npx prisma db seed
+```
+
+The seed is idempotent. It guarantees an admin account with username `admin` and email
+`admin@dev.local`. To mint an admin JWT locally, call `POST /auth/dev-login` with:
+
+```json
+{ "username": "admin" }
+```
+
 ## Route and Controller Layout
 
 The project now follows the checkoff-style versioned structure:
