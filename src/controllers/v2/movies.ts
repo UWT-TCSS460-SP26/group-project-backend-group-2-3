@@ -18,10 +18,7 @@ import {
   parseRequiredQueryString,
 } from '../../utils/validation';
 
-export const toMovieListItem = (
-  raw: TmdbMovieListResult,
-  imageBaseUrl: string
-): MediaListItem => ({
+export const toMovieListItem = (raw: TmdbMovieListResult, imageBaseUrl: string): MediaListItem => ({
   id: raw.id,
   mediaType: 'movie',
   overview: raw.overview,

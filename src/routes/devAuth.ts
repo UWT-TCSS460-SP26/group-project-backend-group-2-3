@@ -74,7 +74,7 @@ router.post('/dev-login', async (request: Request, response: Response): Promise<
       role: user.role,
     },
     secret,
-    { expiresIn: '24h' },
+    { expiresIn: '24h' }
   );
 
   response.json({

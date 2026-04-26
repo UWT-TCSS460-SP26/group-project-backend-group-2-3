@@ -9,11 +9,7 @@ import { AuthenticatedUser, UserRole } from '../types/auth';
  * attaches the decoded payload to request.user. Responds 401 when the
  * header is missing, malformed, or the token is invalid/expired.
  */
-export const requireAuth = (
-  request: Request,
-  response: Response,
-  next: NextFunction,
-): void => {
+export const requireAuth = (request: Request, response: Response, next: NextFunction): void => {
   const secret = process.env.JWT_SECRET;
   if (!secret) {
     next(new HttpError(HTTP_STATUS.internalServerError, 'JWT_SECRET is not configured'));
@@ -29,7 +25,7 @@ export const requireAuth = (
   const token = header.slice('Bearer '.length).trim();
 
   try {
-    const payload = jwt.verify(token, secret) as AuthenticatedUser;
+    const payload = jwt.verify(token, secret) as unknown as AuthenticatedUser;
     request.user = payload;
     next();
   } catch {
