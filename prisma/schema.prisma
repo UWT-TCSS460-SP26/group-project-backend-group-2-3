@@ -39,7 +39,7 @@ model Rating {
 
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
-  @@unique([userId, tmdbId, mediaType], name: "one_rating_per_user_content")
+  @@unique([userId, tmdbId, mediaType], name: "one_rating_per_user_content", map: "one_rating_per_user_content")
   @@index([tmdbId, mediaType])
   @@index([userId])
 }
@@ -56,7 +56,7 @@ model Review {
 
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
-  @@unique([userId, tmdbId, mediaType], name: "one_review_per_user_content")
+  @@unique([userId, tmdbId, mediaType], name: "one_review_per_user_content", map: "one_review_per_user_content")
   @@index([tmdbId, mediaType, createdAt(sort: Desc)])
   @@index([userId])
 }
