@@ -1,20 +1,6 @@
 import { Request, Response, NextFunction } from 'express';
 import jwt from 'jsonwebtoken';
-
-export interface AuthenticatedUser {
-  sub: number;
-  email: string;
-  role: string;
-}
-
-declare global {
-  // eslint-disable-next-line @typescript-eslint/no-namespace -- Express type augmentation
-  namespace Express {
-    interface Request {
-      user?: AuthenticatedUser;
-    }
-  }
-}
+import { AuthenticatedUser, UserRole } from '../types/auth';
 
 /**
  * Verifies the Authorization: Bearer <token> header using JWT_SECRET and
@@ -54,7 +40,7 @@ export const requireAuth = (
  *
  *   router.delete('/reviews/:id', requireAuth, requireRole('admin'), handler);
  */
-export const requireRole = (role: string) => {
+export const requireRole = (role: UserRole) => {
   return (request: Request, response: Response, next: NextFunction): void => {
     if (!request.user) {
       response.status(401).json({ error: 'Not authenticated' });

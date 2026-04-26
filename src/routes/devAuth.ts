@@ -1,6 +1,7 @@
 import { Router, Request, Response } from 'express';
 import jwt from 'jsonwebtoken';
 import { prisma } from '../lib/prisma';
+import { USER_ROLES } from '../types/auth';
 
 const router = Router();
 
@@ -62,7 +63,7 @@ router.post('/dev-login', async (request: Request, response: Response): Promise<
     create: {
       username,
       email: email ?? `${username}@dev.local`,
-      role: 'user',
+      role: USER_ROLES.user,
     },
   });
 

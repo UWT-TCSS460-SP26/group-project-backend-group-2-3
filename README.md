@@ -53,6 +53,14 @@ The project now follows the checkoff-style versioned structure:
 - `src/routes/v1/*.ts` and `src/routes/v2/*.ts` define endpoints for each version
 - `src/controllers/v1/*.ts` and `src/controllers/v2/*.ts` are used where handlers are split from routes
 
+## Shared Contracts
+
+- Auth role and JWT payload types live in `src/types/auth.ts`.
+- API error response types and status constants live in `src/types/api.ts`.
+- Controllers should pass expected failures with `next(new HttpError(status, message))`.
+- The global error middleware maps errors through `src/errors/error-mapper.ts` so responses use
+  the standard `{ "error": "message" }` shape.
+
 ## Scripts
 
 | Command                | Description                       |
