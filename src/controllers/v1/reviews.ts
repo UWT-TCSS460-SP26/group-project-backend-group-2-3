@@ -3,15 +3,12 @@ import { Request, Response, NextFunction } from 'express';
 import { prisma } from '../../lib/prisma';
 import { HttpError } from '../../errors/http-error';
 import { HTTP_STATUS } from '../../types/api';
+import { parseMediaTargetFilters, parsePaginationQuery } from '../../utils/request-parsing';
 import {
   parseOptionalPositiveIntegerFilter,
-  parseOptionalPositiveIntegerQueryWithDefault,
   parsePositiveIntegerPathParam,
   parseRequiredPositiveIntegerField,
 } from '../../utils/validation';
-
-const DEFAULT_PAGE_SIZE = 10;
-const MAX_PAGE_SIZE = 50;
 
 interface ReviewWithAuthor {
   id: number;
@@ -39,18 +36,6 @@ const isMediaType = (value: unknown): value is MediaType => value === 'movie' ||
 const parseMediaTypeField = (rawValue: unknown): MediaType => {
   if (!isMediaType(rawValue)) {
     throw new HttpError(400, 'mediaType must be either movie or show');
-  }
-
-  return rawValue;
-};
-
-const parseOptionalMediaTypeFilter = (rawValue: unknown): MediaType | undefined => {
-  if (rawValue === undefined) {
-    return undefined;
-  }
-
-  if (!isMediaType(rawValue)) {
-    throw new HttpError(400, 'Query parameter mediaType must be either movie or show');
   }
 
   return rawValue;
@@ -88,20 +73,6 @@ const parseBodyField = (rawValue: unknown): string => {
   }
 
   return trimmed;
-};
-
-const parsePageSize = (rawValue: unknown): number => {
-  const pageSize = parseOptionalPositiveIntegerQueryWithDefault(
-    rawValue,
-    DEFAULT_PAGE_SIZE,
-    'Query parameter pageSize must be a positive integer'
-  );
-
-  if (pageSize > MAX_PAGE_SIZE) {
-    throw new HttpError(400, `Query parameter pageSize must be ${MAX_PAGE_SIZE} or less`);
-  }
-
-  return pageSize;
 };
 
 const isUniqueConstraintError = (error: unknown): boolean => {
@@ -217,21 +188,12 @@ export const listReviews = async (
   next: NextFunction
 ): Promise<void> => {
   try {
-    const page = parseOptionalPositiveIntegerQueryWithDefault(
-      request.query.page,
-      1,
-      'Query parameter page must be a positive integer'
-    );
-    const pageSize = parsePageSize(request.query.pageSize);
-    const tmdbId = parseOptionalPositiveIntegerFilter(
-      request.query.tmdbId,
-      'Query parameter tmdbId must be a positive integer'
-    );
+    const { page, pageSize, skip, take } = parsePaginationQuery(request.query as Record<string, unknown>);
+    const { tmdbId, mediaType } = parseMediaTargetFilters(request.query as Record<string, unknown>);
     const userId = parseOptionalPositiveIntegerFilter(
       request.query.userId,
       'Query parameter userId must be a positive integer'
     );
-    const mediaType = parseOptionalMediaTypeFilter(request.query.mediaType);
 
     const where: Prisma.ReviewWhereInput = {
       ...(tmdbId !== undefined ? { tmdbId } : {}),
@@ -252,8 +214,8 @@ export const listReviews = async (
           },
         },
         orderBy: [{ createdAt: 'desc' }, { id: 'desc' }],
-        skip: (page - 1) * pageSize,
-        take: pageSize,
+        skip,
+        take,
       }),
     ]);
 

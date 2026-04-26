@@ -52,6 +52,13 @@ export const parsePositiveIntegerPathParam = (rawValue: unknown): number | null 
   return parsePositiveInteger(value);
 };
 
+/**
+ * Parses a required JSON body field that must be a positive integer.
+ *
+ * Contract:
+ * - Accepts numbers only (not numeric strings).
+ * - Throws `HttpError(400, invalidMessage)` when invalid.
+ */
 export const parseRequiredPositiveIntegerField = (
   rawValue: unknown,
   invalidMessage: string
@@ -63,6 +70,13 @@ export const parseRequiredPositiveIntegerField = (
   return rawValue;
 };
 
+/**
+ * Parses an optional positive-integer query string, returning a default when omitted.
+ *
+ * Contract:
+ * - Accepts "1", "2", ... (no decimals, no leading/trailing spaces).
+ * - Throws `HttpError(400, invalidMessage)` when present but invalid.
+ */
 export const parseOptionalPositiveIntegerQueryWithDefault = (
   rawValue: unknown,
   defaultValue: number,
@@ -86,6 +100,13 @@ export const parseOptionalPositiveIntegerQueryWithDefault = (
   return parsed;
 };
 
+/**
+ * Parses an optional positive-integer query string used as a filter (e.g. tmdbId, userId).
+ *
+ * Contract:
+ * - Returns `undefined` when omitted.
+ * - Throws `HttpError(400, invalidMessage)` when present but invalid.
+ */
 export const parseOptionalPositiveIntegerFilter = (
   rawValue: unknown,
   invalidMessage: string
