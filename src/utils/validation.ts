@@ -51,3 +51,59 @@ export const parsePositiveIntegerPathParam = (rawValue: unknown): number | null 
 
   return parsePositiveInteger(value);
 };
+
+export const parseRequiredPositiveIntegerField = (
+  rawValue: unknown,
+  invalidMessage: string
+): number => {
+  if (typeof rawValue !== 'number' || !Number.isInteger(rawValue) || rawValue <= 0) {
+    throw new HttpError(400, invalidMessage);
+  }
+
+  return rawValue;
+};
+
+export const parseOptionalPositiveIntegerQueryWithDefault = (
+  rawValue: unknown,
+  defaultValue: number,
+  invalidMessage: string
+): number => {
+  const value = getSingleValue(rawValue);
+
+  if (value === undefined) {
+    return defaultValue;
+  }
+
+  if (typeof value !== 'string') {
+    throw new HttpError(400, invalidMessage);
+  }
+
+  const parsed = parsePositiveInteger(value);
+  if (parsed === null) {
+    throw new HttpError(400, invalidMessage);
+  }
+
+  return parsed;
+};
+
+export const parseOptionalPositiveIntegerFilter = (
+  rawValue: unknown,
+  invalidMessage: string
+): number | undefined => {
+  const value = getSingleValue(rawValue);
+
+  if (value === undefined) {
+    return undefined;
+  }
+
+  if (typeof value !== 'string') {
+    throw new HttpError(400, invalidMessage);
+  }
+
+  const parsed = parsePositiveInteger(value);
+  if (parsed === null) {
+    throw new HttpError(400, invalidMessage);
+  }
+
+  return parsed;
+};
