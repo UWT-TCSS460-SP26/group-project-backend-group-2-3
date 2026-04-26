@@ -25,3 +25,5 @@ coverage/
 
 # Claude Code
 CLAUDE.md
+
+/src/generated/prisma

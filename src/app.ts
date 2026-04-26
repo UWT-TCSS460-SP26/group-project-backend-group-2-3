@@ -3,9 +3,10 @@ import cors from 'cors';
 import fs from 'fs';
 import YAML from 'yaml';
 import { apiReference } from '@scalar/express-api-reference';
-import { moviesRouter } from './routes/movies';
-import { showsRouter } from './routes/shows';
+import { v1Router } from './routes/v1';
+import { v2Router } from './routes/v2';
 import { errorHandler } from './middleware/error-handler';
+import devAuthRouter from './routes/devAuth';
 
 const app = express();
 
@@ -29,9 +30,17 @@ app.get('/health', (_request: Request, response: Response) => {
   });
 });
 
-// API routes
-app.use('/movies', moviesRouter);
-app.use('/shows', showsRouter);
+// Primary versioned API routes (checkoff-style)
+app.use('/v1', v1Router);
+app.use('/v2', v2Router);
+
+// Backward-compatible aliases while clients migrate.
+app.use('/api/v1', v1Router);
+app.use('/api/v2', v2Router);
+app.use('/', v1Router);
+
+// Dev-only auth (Sprint 2) — remove before production
+app.use('/auth', devAuthRouter);
 
 // 404 handler — must be after all routes
 app.use((_request: Request, response: Response) => {
