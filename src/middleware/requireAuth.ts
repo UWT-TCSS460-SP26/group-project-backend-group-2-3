@@ -1,5 +1,7 @@
 import { Request, Response, NextFunction } from 'express';
 import jwt from 'jsonwebtoken';
+import { HttpError } from '../errors/http-error';
+import { HTTP_STATUS } from '../types/api';
 import { AuthenticatedUser, UserRole } from '../types/auth';
 
 /**
@@ -14,13 +16,13 @@ export const requireAuth = (
 ): void => {
   const secret = process.env.JWT_SECRET;
   if (!secret) {
-    response.status(500).json({ error: 'JWT_SECRET is not configured' });
+    next(new HttpError(HTTP_STATUS.internalServerError, 'JWT_SECRET is not configured'));
     return;
   }
 
   const header = request.headers.authorization;
   if (!header || !header.startsWith('Bearer ')) {
-    response.status(401).json({ error: 'Missing or malformed Authorization header' });
+    next(new HttpError(HTTP_STATUS.unauthorized, 'Missing or malformed Authorization header'));
     return;
   }
 
@@ -31,7 +33,7 @@ export const requireAuth = (
     request.user = payload;
     next();
   } catch {
-    response.status(401).json({ error: 'Invalid or expired token' });
+    next(new HttpError(HTTP_STATUS.unauthorized, 'Invalid or expired token'));
   }
 };
 
@@ -41,13 +43,13 @@ export const requireAuth = (
  *   router.delete('/reviews/:id', requireAuth, requireRole('admin'), handler);
  */
 export const requireRole = (role: UserRole) => {
-  return (request: Request, response: Response, next: NextFunction): void => {
+  return (request: Request, _response: Response, next: NextFunction): void => {
     if (!request.user) {
-      response.status(401).json({ error: 'Not authenticated' });
+      next(new HttpError(HTTP_STATUS.unauthorized, 'Not authenticated'));
       return;
     }
     if (request.user.role !== role) {
-      response.status(403).json({ error: 'Insufficient permissions' });
+      next(new HttpError(HTTP_STATUS.forbidden, 'Insufficient permissions'));
       return;
     }
     next();
