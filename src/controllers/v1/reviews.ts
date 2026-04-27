@@ -6,24 +6,15 @@ import { HTTP_STATUS } from '../../types/api';
 import { parseMediaTargetFilters, parsePaginationQuery } from '../../utils/request-parsing';
 import { assertOwner, assertOwnerOrAdmin } from '../../utils/authorization';
 import {
+  toPaginatedResponse,
+  toReviewResponse,
+  userContentAuthorInclude,
+} from '../../transformers/user-content';
+import {
   parseOptionalPositiveIntegerFilter,
   parsePositiveIntegerPathParam,
   parseRequiredPositiveIntegerField,
 } from '../../utils/validation';
-
-interface ReviewWithAuthor {
-  id: number;
-  tmdbId: number;
-  mediaType: MediaType;
-  title: string | null;
-  body: string;
-  createdAt: Date;
-  updatedAt: Date;
-  user: {
-    id: number;
-    username: string;
-  };
-}
 
 interface ReviewBodyPayload {
   tmdbId?: unknown;
@@ -93,20 +84,6 @@ const isUniqueConstraintError = (error: unknown): boolean => {
   return false;
 };
 
-const toReviewResponse = (review: ReviewWithAuthor) => ({
-  id: review.id,
-  tmdbId: review.tmdbId,
-  mediaType: review.mediaType,
-  title: review.title,
-  body: review.body,
-  createdAt: review.createdAt.toISOString(),
-  updatedAt: review.updatedAt.toISOString(),
-  author: {
-    id: review.user.id,
-    username: review.user.username,
-  },
-});
-
 export const createReview = async (
   request: Request,
   response: Response,
@@ -135,14 +112,7 @@ export const createReview = async (
         title,
         body,
       },
-      include: {
-        user: {
-          select: {
-            id: true,
-            username: true,
-          },
-        },
-      },
+      include: userContentAuthorInclude,
     });
 
     response.status(201).json(toReviewResponse(review));
@@ -170,14 +140,7 @@ export const getReviewById = async (
   try {
     const review = await prisma.review.findUnique({
       where: { id: reviewId },
-      include: {
-        user: {
-          select: {
-            id: true,
-            username: true,
-          },
-        },
-      },
+      include: userContentAuthorInclude,
     });
 
     if (!review) {
@@ -216,27 +179,21 @@ export const listReviews = async (
       prisma.review.count({ where }),
       prisma.review.findMany({
         where,
-        include: {
-          user: {
-            select: {
-              id: true,
-              username: true,
-            },
-          },
-        },
+        include: userContentAuthorInclude,
         orderBy: [{ createdAt: 'desc' }, { id: 'desc' }],
         skip,
         take,
       }),
     ]);
 
-    response.status(200).json({
-      page,
-      pageSize,
-      totalPages: Math.ceil(totalResults / pageSize),
-      totalResults,
-      results: reviews.map((review) => toReviewResponse(review)),
-    });
+    response.status(200).json(
+      toPaginatedResponse({
+        page,
+        pageSize,
+        totalResults,
+        results: reviews.map((review) => toReviewResponse(review)),
+      })
+    );
   } catch (error) {
     next(error);
   }
@@ -278,14 +235,7 @@ export const updateReview = async (
     const updated = await prisma.review.update({
       where: { id: reviewId },
       data: { title, body },
-      include: {
-        user: {
-          select: {
-            id: true,
-            username: true,
-          },
-        },
-      },
+      include: userContentAuthorInclude,
     });
 
     response.status(200).json(toReviewResponse(updated));

@@ -2,21 +2,18 @@ process.env.DATABASE_URL ??= 'postgresql://postgres:password@localhost:5433/tcss
 process.env.JWT_SECRET ??= 'dev-secret';
 
 import request from 'supertest';
+import {
+  buildReviewCreatePayload,
+  USER_CONTENT_TEST_IDENTITIES,
+  USER_CONTENT_TEST_TMDB_IDS,
+} from './support/user-content-fixtures';
 
 let app: typeof import('../src/app').app;
 let prisma: typeof import('../src/lib/prisma').prisma;
 
-const ownerIdentity = {
-  username: 'reviews-int-owner',
-  email: 'reviews-int-owner@example.test',
-};
-
-const otherIdentity = {
-  username: 'reviews-int-other',
-  email: 'reviews-int-other@example.test',
-};
-
-const testTmdbIds = [910001, 910002, 910003, 910004, 910005, 910006];
+const ownerIdentity = USER_CONTENT_TEST_IDENTITIES.reviewOwner;
+const otherIdentity = USER_CONTENT_TEST_IDENTITIES.reviewOther;
+const testTmdbIds = [...USER_CONTENT_TEST_TMDB_IDS];
 
 let ownerToken = '';
 let otherToken = '';
@@ -71,12 +68,12 @@ describe('reviews routes', () => {
     const createResponse = await request(app)
       .post('/reviews')
       .set('Authorization', `Bearer ${ownerToken}`)
-      .send({
-        tmdbId: 910001,
-        mediaType: 'movie',
-        title: '  Great watch  ',
-        body: '  This movie stayed sharp, focused, and worth revisiting.  ',
-      });
+      .send(
+        buildReviewCreatePayload({
+          title: '  Great watch  ',
+          body: '  This movie stayed sharp, focused, and worth revisiting.  ',
+        })
+      );
 
     expect(createResponse.status).toBe(201);
     expect(createResponse.body).toMatchObject({
@@ -102,12 +99,14 @@ describe('reviews routes', () => {
     await request(app)
       .post('/reviews')
       .set('Authorization', `Bearer ${otherToken}`)
-      .send({
-        tmdbId: 910002,
-        mediaType: 'show',
-        title: 'Solid season',
-        body: 'This season kept the pacing tight and the ending paid off well.',
-      })
+      .send(
+        buildReviewCreatePayload({
+          tmdbId: 910002,
+          mediaType: 'show',
+          title: 'Solid season',
+          body: 'This season kept the pacing tight and the ending paid off well.',
+        })
+      )
       .expect(201);
 
     const listResponse = await request(app).get(
@@ -185,12 +184,12 @@ describe('reviews routes', () => {
   });
 
   it('returns 409 when the same user reviews the same item twice', async () => {
-    const payload = {
+    const payload = buildReviewCreatePayload({
       tmdbId: 910004,
       mediaType: 'movie',
       title: 'Rewatch winner',
       body: 'This one held up even better on a second viewing than the first.',
-    };
+    });
 
     await request(app)
       .post('/reviews')

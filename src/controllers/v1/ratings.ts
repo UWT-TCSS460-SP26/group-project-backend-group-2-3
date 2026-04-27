@@ -6,14 +6,15 @@ import { HTTP_STATUS } from '../../types/api';
 import { parseMediaTargetFilters, parsePaginationQuery } from '../../utils/request-parsing';
 import { assertOwner } from '../../utils/authorization';
 import {
+  toPaginatedResponse,
+  toRatingResponse,
+  userContentAuthorInclude,
+} from '../../transformers/user-content';
+import {
   parseOptionalPositiveIntegerFilter,
   parsePositiveIntegerPathParam,
   parseRequiredPositiveIntegerField,
 } from '../../utils/validation';
-
-type RatingWithAuthor = Prisma.RatingGetPayload<{
-  include: { user: { select: { id: true; username: true } } };
-}>;
 
 interface RatingBodyPayload {
   tmdbId?: unknown;
@@ -24,19 +25,6 @@ interface RatingBodyPayload {
 interface RatingUpdatePayload {
   score?: unknown;
 }
-
-const toRatingResponse = (rating: RatingWithAuthor) => ({
-  id: rating.id,
-  tmdbId: rating.tmdbId,
-  mediaType: rating.mediaType,
-  score: rating.score,
-  createdAt: rating.createdAt.toISOString(),
-  updatedAt: rating.updatedAt.toISOString(),
-  author: {
-    id: rating.user.id,
-    username: rating.user.username,
-  },
-});
 
 const isMediaType = (value: unknown): value is MediaType => value === 'movie' || value === 'show';
 
@@ -99,14 +87,7 @@ export const createRating = async (
         mediaType,
         score,
       },
-      include: {
-        user: {
-          select: {
-            id: true,
-            username: true,
-          },
-        },
-      },
+      include: userContentAuthorInclude,
     });
 
     response.status(201).json(toRatingResponse(rating));
@@ -134,14 +115,7 @@ export const getRatingById = async (
   try {
     const rating = await prisma.rating.findUnique({
       where: { id: ratingId },
-      include: {
-        user: {
-          select: {
-            id: true,
-            username: true,
-          },
-        },
-      },
+      include: userContentAuthorInclude,
     });
 
     if (!rating) {
@@ -190,14 +164,7 @@ export const updateRating = async (
     const updated = await prisma.rating.update({
       where: { id: ratingId },
       data: { score },
-      include: {
-        user: {
-          select: {
-            id: true,
-            username: true,
-          },
-        },
-      },
+      include: userContentAuthorInclude,
     });
 
     response.status(200).json(toRatingResponse(updated));
@@ -267,27 +234,21 @@ export const listRatings = async (
       prisma.rating.count({ where }),
       prisma.rating.findMany({
         where,
-        include: {
-          user: {
-            select: {
-              id: true,
-              username: true,
-            },
-          },
-        },
+        include: userContentAuthorInclude,
         orderBy: [{ createdAt: 'desc' }, { id: 'desc' }],
         skip,
         take,
       }),
     ]);
 
-    response.status(200).json({
-      page,
-      pageSize,
-      totalPages: Math.ceil(totalResults / pageSize),
-      totalResults,
-      results: ratings.map((rating) => toRatingResponse(rating)),
-    });
+    response.status(200).json(
+      toPaginatedResponse({
+        page,
+        pageSize,
+        totalResults,
+        results: ratings.map((rating) => toRatingResponse(rating)),
+      })
+    );
   } catch (error) {
     next(error);
   }

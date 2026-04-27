@@ -629,15 +629,7 @@ paths:
                   value:
                     error: body must be between 10 and 5000 characters
         '401':
-          description: Authentication required
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ApiErrorResponse'
-              examples:
-                missingAuth:
-                  value:
-                    error: Missing or malformed Authorization header
+          $ref: '#/components/responses/UnauthorizedError'
         '409':
           description: Duplicate review for the same user and item
           content:
@@ -737,21 +729,9 @@ paths:
                   value:
                     error: body must be between 10 and 5000 characters
         '401':
-          description: Authentication required
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ApiErrorResponse'
+          $ref: '#/components/responses/UnauthorizedError'
         '403':
-          description: User does not own the review
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ApiErrorResponse'
-              examples:
-                forbidden:
-                  value:
-                    error: You do not have permission to modify this resource
+          $ref: '#/components/responses/ForbiddenError'
         '404':
           description: Review not found
           content:
@@ -781,21 +761,9 @@ paths:
         '204':
           description: Review deleted
         '401':
-          description: Authentication required
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ApiErrorResponse'
+          $ref: '#/components/responses/UnauthorizedError'
         '403':
-          description: User does not own the review and is not an admin
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ApiErrorResponse'
-              examples:
-                forbidden:
-                  value:
-                    error: You do not have permission to modify this resource
+          $ref: '#/components/responses/ForbiddenError'
         '404':
           description: Review not found
           content:
@@ -1292,25 +1260,7 @@ paths:
         content:
           application/json:
             schema:
-              type: object
-              required:
-                - tmdbId
-                - mediaType
-                - score
-              properties:
-                tmdbId:
-                  type: integer
-                  minimum: 1
-                  example: 550
-                mediaType:
-                  type: string
-                  enum: [movie, show]
-                  example: movie
-                score:
-                  type: integer
-                  minimum: 1
-                  maximum: 10
-                  example: 8
+              $ref: '#/components/schemas/RatingCreateRequest'
             example:
               tmdbId: 550
               mediaType: movie
@@ -1351,18 +1301,7 @@ paths:
                   value:
                     error: score must be an integer between 1 and 10
         '401':
-          description: Missing or invalid token
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ApiErrorResponse'
-              examples:
-                missingToken:
-                  value:
-                    error: Missing or malformed Authorization header
-                expiredToken:
-                  value:
-                    error: Invalid or expired token
+          $ref: '#/components/responses/UnauthorizedError'
         '409':
           description: User has already rated this item
           content:
@@ -1435,15 +1374,7 @@ paths:
         content:
           application/json:
             schema:
-              type: object
-              required:
-                - score
-              properties:
-                score:
-                  type: integer
-                  minimum: 1
-                  maximum: 10
-                  example: 9
+              $ref: '#/components/schemas/RatingUpdateRequest'
             example:
               score: 9
       responses:
@@ -1476,25 +1407,9 @@ paths:
                   value:
                     error: score must be an integer between 1 and 10
         '401':
-          description: Missing or invalid token
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ApiErrorResponse'
-              examples:
-                missingToken:
-                  value:
-                    error: Missing or malformed Authorization header
+          $ref: '#/components/responses/UnauthorizedError'
         '403':
-          description: Authenticated user does not own this rating
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ApiErrorResponse'
-              examples:
-                forbidden:
-                  value:
-                    error: You do not have permission to modify this resource
+          $ref: '#/components/responses/ForbiddenError'
         '404':
           description: Rating not found
           content:
@@ -1524,25 +1439,9 @@ paths:
         '204':
           description: Rating deleted
         '401':
-          description: Missing or invalid token
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ApiErrorResponse'
-              examples:
-                missingToken:
-                  value:
-                    error: Missing or malformed Authorization header
+          $ref: '#/components/responses/UnauthorizedError'
         '403':
-          description: Authenticated user does not own this rating
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ApiErrorResponse'
-              examples:
-                forbidden:
-                  value:
-                    error: You do not have permission to modify this resource
+          $ref: '#/components/responses/ForbiddenError'
         '404':
           description: Rating not found
           content:
@@ -1561,7 +1460,37 @@ components:
       scheme: bearer
       bearerFormat: JWT
 
+  responses:
+    UnauthorizedError:
+      description: Authentication required
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ApiErrorResponse'
+          examples:
+            missingToken:
+              value:
+                error: Missing or malformed Authorization header
+            invalidToken:
+              value:
+                error: Invalid or expired token
+    ForbiddenError:
+      description: Authenticated user does not have permission to modify this resource
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ApiErrorResponse'
+          examples:
+            forbidden:
+              value:
+                error: You do not have permission to modify this resource
+
   schemas:
+    MediaType:
+      type: string
+      enum: [movie, show]
+      example: movie
+
     ApiErrorResponse:
       type: object
       required:
@@ -1571,7 +1500,7 @@ components:
           type: string
           example: Internal server error
 
-    ReviewAuthor:
+    UserContentAuthor:
       type: object
       required:
         - id
@@ -1603,9 +1532,7 @@ components:
           type: integer
           example: 550
         mediaType:
-          type: string
-          enum: [movie, show]
-          example: movie
+          $ref: '#/components/schemas/MediaType'
         title:
           type: string
           nullable: true
@@ -1622,7 +1549,7 @@ components:
           format: date-time
           example: '2026-04-26T18:30:00.000Z'
         author:
-          $ref: '#/components/schemas/ReviewAuthor'
+          $ref: '#/components/schemas/UserContentAuthor'
 
     ReviewListResponse:
       type: object
@@ -1662,9 +1589,7 @@ components:
           minimum: 1
           example: 550
         mediaType:
-          type: string
-          enum: [movie, show]
-          example: movie
+          $ref: '#/components/schemas/MediaType'
         title:
           type: string
           nullable: true
@@ -1721,9 +1646,7 @@ components:
           type: string
           example: An insomniac office worker crosses paths with a soap maker.
         mediaType:
-          type: string
-          enum: [movie, show]
-          example: movie
+          $ref: '#/components/schemas/MediaType'
 
     MediaListResponse:
       type: object
@@ -1874,9 +1797,7 @@ components:
           type: integer
           example: 550
         mediaType:
-          type: string
-          enum: [movie, show]
-          example: movie
+          $ref: '#/components/schemas/MediaType'
         score:
           type: integer
           minimum: 1
@@ -1891,17 +1812,7 @@ components:
           format: date-time
           example: '2026-01-01T00:00:00.000Z'
         author:
-          type: object
-          required:
-            - id
-            - username
-          properties:
-            id:
-              type: integer
-              example: 1
-            username:
-              type: string
-              example: alice
+          $ref: '#/components/schemas/UserContentAuthor'
 
     RatingListResponse:
       type: object
@@ -1928,6 +1839,36 @@ components:
           type: array
           items:
             $ref: '#/components/schemas/RatingResponse'
+
+    RatingCreateRequest:
+      type: object
+      required:
+        - tmdbId
+        - mediaType
+        - score
+      properties:
+        tmdbId:
+          type: integer
+          minimum: 1
+          example: 550
+        mediaType:
+          $ref: '#/components/schemas/MediaType'
+        score:
+          type: integer
+          minimum: 1
+          maximum: 10
+          example: 8
+
+    RatingUpdateRequest:
+      type: object
+      required:
+        - score
+      properties:
+        score:
+          type: integer
+          minimum: 1
+          maximum: 10
+          example: 9
 
     DevLoginRequest:
       type: object
