@@ -31,7 +31,7 @@ and returns a JWT plus the user payload for testing protected routes.
 
 ## Sprint 2 Database Setup
 
-After `DATABASE_URL` is configured, apply migrations and seed the local admin user:
+After `DATABASE_URL` is configured, apply the committed migrations and seed the local admin user:
 
 ```bash
 npx prisma migrate dev
@@ -44,6 +44,11 @@ The seed is idempotent. It guarantees an admin account with username `admin` and
 ```json
 { "username": "admin" }
 ```
+
+When the Prisma schema changes, run `npx prisma migrate dev --name <short-change-name>` and commit
+the updated `prisma/schema.prisma` plus the generated `prisma/migrations/...` folder. When seed data
+changes, update `prisma/seed.ts` and rerun `npx prisma db seed`; the seed script should remain safe
+to run more than once on a teammate's local database.
 
 ## Route and Controller Layout
 

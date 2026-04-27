@@ -1,7 +1,9 @@
 import request from 'supertest';
-import jwt from 'jsonwebtoken';
 import { app } from '../src/app';
 import { prisma } from '../src/lib/prisma';
+import { UserRole } from '../src/types/auth';
+import { createAccessToken, TEST_JWT_SECRET } from './support/auth-fixtures';
+import { buildRatingRecord, buildRatingResponse } from './support/user-content-fixtures';
 
 // ---------------------------------------------------------------------------
 // Prisma mock — replaces the entire module before any import runs.
@@ -30,41 +32,21 @@ const mockTransaction = prisma.$transaction as jest.Mock;
 // ---------------------------------------------------------------------------
 // JWT helper — mints tokens directly without calling dev-login
 // ---------------------------------------------------------------------------
-const TEST_SECRET = 'test-secret';
-
-const makeToken = (userId = 1, role: 'user' | 'admin' = 'user') =>
-  jwt.sign({ sub: userId, email: `user${userId}@test.com`, role }, TEST_SECRET);
+const makeToken = (userId = 1, role: UserRole = 'user') =>
+  createAccessToken({ sub: userId, email: `user${userId}@test.com`, role });
 
 beforeEach(() => {
   jest.resetAllMocks();
   process.env.TMDB_API_KEY = 'test-api-key';
-  process.env.JWT_SECRET = TEST_SECRET;
+  process.env.JWT_SECRET = TEST_JWT_SECRET;
 });
 
 // ---------------------------------------------------------------------------
 // Shared fixtures
 // ---------------------------------------------------------------------------
 
-const mockRatingRow = {
-  id: 1,
-  tmdbId: 550,
-  mediaType: 'movie',
-  score: 8,
-  userId: 1,
-  createdAt: new Date('2026-01-01T00:00:00.000Z'),
-  updatedAt: new Date('2026-01-01T00:00:00.000Z'),
-  user: { id: 1, username: 'alice' },
-};
-
-const expectedRating = {
-  id: 1,
-  tmdbId: 550,
-  mediaType: 'movie',
-  score: 8,
-  createdAt: '2026-01-01T00:00:00.000Z',
-  updatedAt: '2026-01-01T00:00:00.000Z',
-  author: { id: 1, username: 'alice' },
-};
+const mockRatingRow = buildRatingRecord();
+const expectedRating = buildRatingResponse();
 
 // ---------------------------------------------------------------------------
 // GET /api/v1/ratings
@@ -332,7 +314,7 @@ describe('GET /api/v1/ratings/:id', () => {
 
 describe('PUT /api/v1/ratings/:id', () => {
   it('200 — owner can update score', async () => {
-    const updatedRow = { ...mockRatingRow, score: 9 };
+    const updatedRow = buildRatingRecord({ score: 9 });
     mockFindUnique.mockResolvedValue({ id: 1, userId: 1 });
     mockUpdate.mockResolvedValue(updatedRow);
 
