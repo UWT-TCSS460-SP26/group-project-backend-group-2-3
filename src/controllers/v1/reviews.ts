@@ -4,6 +4,7 @@ import { prisma } from '../../lib/prisma';
 import { HttpError } from '../../errors/http-error';
 import { HTTP_STATUS } from '../../types/api';
 import { parseMediaTargetFilters, parsePaginationQuery } from '../../utils/request-parsing';
+import { assertOwner, assertOwnerOrAdmin } from '../../utils/authorization';
 import {
   parseOptionalPositiveIntegerFilter,
   parsePositiveIntegerPathParam,
@@ -27,6 +28,11 @@ interface ReviewWithAuthor {
 interface ReviewBodyPayload {
   tmdbId?: unknown;
   mediaType?: unknown;
+  title?: unknown;
+  body?: unknown;
+}
+
+interface ReviewUpdatePayload {
   title?: unknown;
   body?: unknown;
 }
@@ -226,6 +232,94 @@ export const listReviews = async (
       totalResults,
       results: reviews.map((review) => toReviewResponse(review)),
     });
+  } catch (error) {
+    next(error);
+  }
+};
+
+export const updateReview = async (
+  request: Request,
+  response: Response,
+  next: NextFunction
+): Promise<void> => {
+  if (!request.user) {
+    next(new HttpError(HTTP_STATUS.unauthorized, 'Not authenticated'));
+    return;
+  }
+
+  const reviewId = parsePositiveIntegerPathParam(request.params.id);
+  if (reviewId === null) {
+    next(new HttpError(HTTP_STATUS.notFound, 'Review not found'));
+    return;
+  }
+
+  try {
+    const existing = await prisma.review.findUnique({
+      where: { id: reviewId },
+      select: { id: true, userId: true },
+    });
+
+    if (!existing) {
+      next(new HttpError(HTTP_STATUS.notFound, 'Review not found'));
+      return;
+    }
+
+    assertOwner(request.user, existing.userId);
+
+    const payload = request.body as ReviewUpdatePayload;
+    const title = parseOptionalTitleField(payload.title);
+    const body = parseBodyField(payload.body);
+
+    const updated = await prisma.review.update({
+      where: { id: reviewId },
+      data: { title, body },
+      include: {
+        user: {
+          select: {
+            id: true,
+            username: true,
+          },
+        },
+      },
+    });
+
+    response.status(200).json(toReviewResponse(updated));
+  } catch (error) {
+    next(error);
+  }
+};
+
+export const deleteReview = async (
+  request: Request,
+  response: Response,
+  next: NextFunction
+): Promise<void> => {
+  if (!request.user) {
+    next(new HttpError(HTTP_STATUS.unauthorized, 'Not authenticated'));
+    return;
+  }
+
+  const reviewId = parsePositiveIntegerPathParam(request.params.id);
+  if (reviewId === null) {
+    next(new HttpError(HTTP_STATUS.notFound, 'Review not found'));
+    return;
+  }
+
+  try {
+    const existing = await prisma.review.findUnique({
+      where: { id: reviewId },
+      select: { id: true, userId: true },
+    });
+
+    if (!existing) {
+      next(new HttpError(HTTP_STATUS.notFound, 'Review not found'));
+      return;
+    }
+
+    assertOwnerOrAdmin(request.user, existing.userId);
+
+    await prisma.review.delete({ where: { id: reviewId } });
+    response.status(204).send();
   } catch (error) {
     next(error);
   }

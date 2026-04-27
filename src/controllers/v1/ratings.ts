@@ -4,6 +4,7 @@ import { prisma } from '../../lib/prisma';
 import { HttpError } from '../../errors/http-error';
 import { HTTP_STATUS } from '../../types/api';
 import { parseMediaTargetFilters, parsePaginationQuery } from '../../utils/request-parsing';
+import { assertOwner } from '../../utils/authorization';
 import {
   parseOptionalPositiveIntegerFilter,
   parsePositiveIntegerPathParam,
@@ -17,6 +18,10 @@ type RatingWithAuthor = Prisma.RatingGetPayload<{
 interface RatingBodyPayload {
   tmdbId?: unknown;
   mediaType?: unknown;
+  score?: unknown;
+}
+
+interface RatingUpdatePayload {
   score?: unknown;
 }
 
@@ -137,6 +142,93 @@ export const getRatingById = async (
     }
 
     response.status(200).json(toRatingResponse(rating));
+  } catch (error) {
+    next(error);
+  }
+};
+
+export const updateRating = async (
+  request: Request,
+  response: Response,
+  next: NextFunction
+): Promise<void> => {
+  if (!request.user) {
+    next(new HttpError(HTTP_STATUS.unauthorized, 'Not authenticated'));
+    return;
+  }
+
+  const ratingId = parsePositiveIntegerPathParam(request.params.id);
+  if (ratingId === null) {
+    next(new HttpError(HTTP_STATUS.notFound, 'Rating not found'));
+    return;
+  }
+
+  try {
+    const existing = await prisma.rating.findUnique({
+      where: { id: ratingId },
+      select: { id: true, userId: true },
+    });
+
+    if (!existing) {
+      next(new HttpError(HTTP_STATUS.notFound, 'Rating not found'));
+      return;
+    }
+
+    assertOwner(request.user, existing.userId);
+
+    const payload = request.body as RatingUpdatePayload;
+    const score = parseScoreField(payload.score);
+
+    const updated = await prisma.rating.update({
+      where: { id: ratingId },
+      data: { score },
+      include: {
+        user: {
+          select: {
+            id: true,
+            username: true,
+          },
+        },
+      },
+    });
+
+    response.status(200).json(toRatingResponse(updated));
+  } catch (error) {
+    next(error);
+  }
+};
+
+export const deleteRating = async (
+  request: Request,
+  response: Response,
+  next: NextFunction
+): Promise<void> => {
+  if (!request.user) {
+    next(new HttpError(HTTP_STATUS.unauthorized, 'Not authenticated'));
+    return;
+  }
+
+  const ratingId = parsePositiveIntegerPathParam(request.params.id);
+  if (ratingId === null) {
+    next(new HttpError(HTTP_STATUS.notFound, 'Rating not found'));
+    return;
+  }
+
+  try {
+    const existing = await prisma.rating.findUnique({
+      where: { id: ratingId },
+      select: { id: true, userId: true },
+    });
+
+    if (!existing) {
+      next(new HttpError(HTTP_STATUS.notFound, 'Rating not found'));
+      return;
+    }
+
+    assertOwner(request.user, existing.userId);
+
+    await prisma.rating.delete({ where: { id: ratingId } });
+    response.status(204).send();
   } catch (error) {
     next(error);
   }
