@@ -21,11 +21,7 @@ declare global {
  * attaches the decoded payload to request.user. Responds 401 when the
  * header is missing, malformed, or the token is invalid/expired.
  */
-export const requireAuth = (
-  request: Request,
-  response: Response,
-  next: NextFunction,
-): void => {
+export const requireAuth = (request: Request, response: Response, next: NextFunction): void => {
   const secret = process.env.JWT_SECRET;
   if (!secret) {
     response.status(500).json({ error: 'JWT_SECRET is not configured' });
