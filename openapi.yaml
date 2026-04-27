@@ -21,6 +21,8 @@ tags:
     description: Movie routes proxied from TMDB
   - name: Shows
     description: TV show routes proxied from TMDB
+  - name: Reviews
+    description: User review routes for movies and shows
 
 paths:
   /health:
@@ -485,6 +487,324 @@ paths:
                   value:
                     error: TMDB request failed
 
+  /api/v1/reviews:
+    get:
+      tags: [Reviews]
+      summary: List reviews
+      description: Returns paginated reviews with optional media and author filters.
+      parameters:
+        - in: query
+          name: tmdbId
+          required: false
+          description: Positive TMDB id filter.
+          schema:
+            type: integer
+            minimum: 1
+          example: 550
+        - in: query
+          name: mediaType
+          required: false
+          description: Filter by media type.
+          schema:
+            type: string
+            enum: [movie, show]
+          example: movie
+        - in: query
+          name: userId
+          required: false
+          description: Positive user id filter.
+          schema:
+            type: integer
+            minimum: 1
+          example: 1
+        - in: query
+          name: page
+          required: false
+          description: Positive integer page number. Defaults to 1.
+          schema:
+            type: integer
+            minimum: 1
+            default: 1
+          example: 1
+        - in: query
+          name: pageSize
+          required: false
+          description: Positive integer page size up to 50. Defaults to 10.
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 50
+            default: 10
+          example: 10
+      responses:
+        '200':
+          description: Paginated review list
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ReviewListResponse'
+              examples:
+                success:
+                  value:
+                    page: 1
+                    pageSize: 1
+                    totalPages: 1
+                    totalResults: 1
+                    results:
+                      - id: 101
+                        tmdbId: 550
+                        mediaType: movie
+                        title: Great watch
+                        body: This movie stayed sharp, focused, and worth revisiting.
+                        createdAt: '2026-04-26T18:30:00.000Z'
+                        updatedAt: '2026-04-26T18:30:00.000Z'
+                        author:
+                          id: 1
+                          username: reviews-int-owner
+        '400':
+          description: Invalid query parameters
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiErrorResponse'
+              examples:
+                invalidMediaType:
+                  value:
+                    error: Query parameter mediaType must be either movie or show
+                invalidPageSize:
+                  value:
+                    error: Query parameter pageSize must be 50 or less
+    post:
+      tags: [Reviews]
+      summary: Create review
+      description: Creates a review for a movie or show. One review per user per item.
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ReviewCreateRequest'
+            examples:
+              success:
+                value:
+                  tmdbId: 550
+                  mediaType: movie
+                  title: Great watch
+                  body: This movie stayed sharp, focused, and worth revisiting.
+      responses:
+        '201':
+          description: Review created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ReviewResponse'
+              examples:
+                success:
+                  value:
+                    id: 101
+                    tmdbId: 550
+                    mediaType: movie
+                    title: Great watch
+                    body: This movie stayed sharp, focused, and worth revisiting.
+                    createdAt: '2026-04-26T18:30:00.000Z'
+                    updatedAt: '2026-04-26T18:30:00.000Z'
+                    author:
+                      id: 1
+                      username: reviews-int-owner
+        '400':
+          description: Invalid review payload
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiErrorResponse'
+              examples:
+                invalidTmdbId:
+                  value:
+                    error: tmdbId must be a positive integer
+                invalidBody:
+                  value:
+                    error: body must be between 10 and 5000 characters
+        '401':
+          description: Authentication required
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiErrorResponse'
+              examples:
+                missingAuth:
+                  value:
+                    error: Missing or malformed Authorization header
+        '409':
+          description: Duplicate review for the same user and item
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiErrorResponse'
+              examples:
+                duplicate:
+                  value:
+                    error: You have already reviewed this item
+
+  /api/v1/reviews/{id}:
+    get:
+      tags: [Reviews]
+      summary: Get review by id
+      description: Returns one review by its internal id.
+      parameters:
+        - in: path
+          name: id
+          required: true
+          description: Positive review id.
+          schema:
+            type: integer
+            minimum: 1
+          example: 101
+      responses:
+        '200':
+          description: Review found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ReviewResponse'
+              examples:
+                success:
+                  value:
+                    id: 101
+                    tmdbId: 550
+                    mediaType: movie
+                    title: Great watch
+                    body: This movie stayed sharp, focused, and worth revisiting.
+                    createdAt: '2026-04-26T18:30:00.000Z'
+                    updatedAt: '2026-04-26T18:30:00.000Z'
+                    author:
+                      id: 1
+                      username: reviews-int-owner
+        '404':
+          description: Review not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiErrorResponse'
+              examples:
+                notFound:
+                  value:
+                    error: Review not found
+    put:
+      tags: [Reviews]
+      summary: Update review
+      description: Updates the title and body for a review owned by the authenticated user.
+      security:
+        - bearerAuth: []
+      parameters:
+        - in: path
+          name: id
+          required: true
+          description: Positive review id.
+          schema:
+            type: integer
+            minimum: 1
+          example: 101
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ReviewUpdateRequest'
+            examples:
+              success:
+                value:
+                  title: Great watch
+                  body: This movie stayed sharp, focused, and worth revisiting.
+      responses:
+        '200':
+          description: Review updated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ReviewResponse'
+        '400':
+          description: Invalid review payload
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiErrorResponse'
+              examples:
+                invalidBody:
+                  value:
+                    error: body must be between 10 and 5000 characters
+        '401':
+          description: Authentication required
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiErrorResponse'
+        '403':
+          description: User does not own the review
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiErrorResponse'
+              examples:
+                forbidden:
+                  value:
+                    error: You do not have permission to modify this resource
+        '404':
+          description: Review not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiErrorResponse'
+              examples:
+                notFound:
+                  value:
+                    error: Review not found
+    delete:
+      tags: [Reviews]
+      summary: Delete review
+      description: Deletes a review owned by the authenticated user or an admin.
+      security:
+        - bearerAuth: []
+      parameters:
+        - in: path
+          name: id
+          required: true
+          description: Positive review id.
+          schema:
+            type: integer
+            minimum: 1
+          example: 101
+      responses:
+        '204':
+          description: Review deleted
+        '401':
+          description: Authentication required
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiErrorResponse'
+        '403':
+          description: User does not own the review and is not an admin
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiErrorResponse'
+              examples:
+                forbidden:
+                  value:
+                    error: You do not have permission to modify this resource
+        '404':
+          description: Review not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiErrorResponse'
+              examples:
+                notFound:
+                  value:
+                    error: Review not found
+
   /api/v2/movies/search:
     get:
       tags: [Movies]
@@ -882,6 +1202,127 @@ components:
         error:
           type: string
           example: Internal server error
+
+    ReviewAuthor:
+      type: object
+      required:
+        - id
+        - username
+      properties:
+        id:
+          type: integer
+          example: 1
+        username:
+          type: string
+          example: reviews-int-owner
+
+    ReviewResponse:
+      type: object
+      required:
+        - id
+        - tmdbId
+        - mediaType
+        - title
+        - body
+        - createdAt
+        - updatedAt
+        - author
+      properties:
+        id:
+          type: integer
+          example: 101
+        tmdbId:
+          type: integer
+          example: 550
+        mediaType:
+          type: string
+          enum: [movie, show]
+          example: movie
+        title:
+          type: string
+          nullable: true
+          example: Great watch
+        body:
+          type: string
+          example: This movie stayed sharp, focused, and worth revisiting.
+        createdAt:
+          type: string
+          format: date-time
+          example: '2026-04-26T18:30:00.000Z'
+        updatedAt:
+          type: string
+          format: date-time
+          example: '2026-04-26T18:30:00.000Z'
+        author:
+          $ref: '#/components/schemas/ReviewAuthor'
+
+    ReviewListResponse:
+      type: object
+      required:
+        - page
+        - pageSize
+        - totalPages
+        - totalResults
+        - results
+      properties:
+        page:
+          type: integer
+          example: 1
+        pageSize:
+          type: integer
+          example: 10
+        totalPages:
+          type: integer
+          example: 1
+        totalResults:
+          type: integer
+          example: 1
+        results:
+          type: array
+          items:
+            $ref: '#/components/schemas/ReviewResponse'
+
+    ReviewCreateRequest:
+      type: object
+      required:
+        - tmdbId
+        - mediaType
+        - body
+      properties:
+        tmdbId:
+          type: integer
+          minimum: 1
+          example: 550
+        mediaType:
+          type: string
+          enum: [movie, show]
+          example: movie
+        title:
+          type: string
+          nullable: true
+          maxLength: 120
+          example: Great watch
+        body:
+          type: string
+          minLength: 10
+          maxLength: 5000
+          example: This movie stayed sharp, focused, and worth revisiting.
+
+    ReviewUpdateRequest:
+      type: object
+      required:
+        - body
+      properties:
+        title:
+          type: string
+          nullable: true
+          maxLength: 120
+          example: Great watch
+        body:
+          type: string
+          minLength: 10
+          maxLength: 5000
+          example: This movie stayed sharp, focused, and worth revisiting.
 
     MediaListItem:
       type: object
