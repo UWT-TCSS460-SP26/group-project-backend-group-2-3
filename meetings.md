@@ -163,7 +163,7 @@ The group finished setting initial team roles, communication expectations, meeti
 - Migration status: `npx prisma migrate status` reported the configured local database is up to date with the two committed migrations.
 - Seed: `npx prisma db seed` passed and confirmed the idempotent admin seed user.
 - OpenAPI: `openapi.yaml` parsed successfully and all component `$ref`s resolved.
-- Tests: `npm test` passed with 18 test suites and 141 tests passing.
+- Tests: `npm test` passed with 18 test suites and 146 tests passing.
 
 ### Final outcome and risks
 

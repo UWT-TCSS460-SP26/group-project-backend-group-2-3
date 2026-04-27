@@ -15,10 +15,15 @@ jest.setTimeout(30000);
 
 const ownerIdentity = USER_CONTENT_TEST_IDENTITIES.reviewOwner;
 const otherIdentity = USER_CONTENT_TEST_IDENTITIES.reviewOther;
+const adminIdentity = {
+  username: 'reviews-int-admin',
+  email: 'reviews-int-admin@example.test',
+};
 const testTmdbIds = [...USER_CONTENT_TEST_TMDB_IDS];
 
 let ownerToken = '';
 let otherToken = '';
+let adminToken = '';
 
 const cleanupTestData = async (): Promise<void> => {
   await prisma.review.deleteMany({
@@ -29,7 +34,7 @@ const cleanupTestData = async (): Promise<void> => {
 
   await prisma.user.deleteMany({
     where: {
-      username: { in: [ownerIdentity.username, otherIdentity.username] },
+      username: { in: [ownerIdentity.username, otherIdentity.username, adminIdentity.username] },
     },
   });
 };
@@ -49,8 +54,16 @@ describe('reviews routes', () => {
     ({ prisma } = await import('../src/lib/prisma'));
 
     await cleanupTestData();
+    await prisma.user.create({
+      data: {
+        username: adminIdentity.username,
+        email: adminIdentity.email,
+        role: 'admin',
+      },
+    });
     ownerToken = await login(ownerIdentity);
     otherToken = await login(otherIdentity);
+    adminToken = await login(adminIdentity);
   });
 
   afterEach(async () => {
@@ -207,6 +220,138 @@ describe('reviews routes', () => {
     expect(duplicateResponse.status).toBe(409);
     expect(duplicateResponse.body).toEqual({
       error: 'You have already reviewed this item',
+    });
+  });
+
+  it('updates a review when the authenticated user owns it', async () => {
+    const createResponse = await request(app)
+      .post('/reviews')
+      .set('Authorization', `Bearer ${ownerToken}`)
+      .send(
+        buildReviewCreatePayload({
+          tmdbId: 910005,
+          title: 'Original review',
+          body: 'This review has enough detail before the update happens.',
+        })
+      )
+      .expect(201);
+
+    const updateResponse = await request(app)
+      .put(`/reviews/${createResponse.body.id}`)
+      .set('Authorization', `Bearer ${ownerToken}`)
+      .send({
+        title: 'Updated review',
+        body: 'This updated review has enough detail for validation to pass.',
+      });
+
+    expect(updateResponse.status).toBe(200);
+    expect(updateResponse.body).toMatchObject({
+      id: createResponse.body.id,
+      tmdbId: 910005,
+      title: 'Updated review',
+      body: 'This updated review has enough detail for validation to pass.',
+      author: {
+        username: ownerIdentity.username,
+      },
+    });
+  });
+
+  it('rejects review updates from non-owners', async () => {
+    const createResponse = await request(app)
+      .post('/reviews')
+      .set('Authorization', `Bearer ${ownerToken}`)
+      .send(
+        buildReviewCreatePayload({
+          tmdbId: 910005,
+          title: 'Owner review',
+          body: 'This review belongs to the owner and should not be changed.',
+        })
+      )
+      .expect(201);
+
+    const updateResponse = await request(app)
+      .put(`/reviews/${createResponse.body.id}`)
+      .set('Authorization', `Bearer ${otherToken}`)
+      .send({
+        title: 'Forbidden update',
+        body: 'This update should fail because the requester is not the owner.',
+      });
+
+    expect(updateResponse.status).toBe(403);
+    expect(updateResponse.body).toEqual({
+      error: 'You do not have permission to modify this resource',
+    });
+  });
+
+  it('deletes a review when the authenticated user owns it', async () => {
+    const createResponse = await request(app)
+      .post('/reviews')
+      .set('Authorization', `Bearer ${ownerToken}`)
+      .send(
+        buildReviewCreatePayload({
+          tmdbId: 910006,
+          title: 'Delete me',
+          body: 'This review should be deleted by the owner during the test.',
+        })
+      )
+      .expect(201);
+
+    await request(app)
+      .delete(`/reviews/${createResponse.body.id}`)
+      .set('Authorization', `Bearer ${ownerToken}`)
+      .expect(204);
+
+    const getDeletedResponse = await request(app).get(`/reviews/${createResponse.body.id}`);
+
+    expect(getDeletedResponse.status).toBe(404);
+    expect(getDeletedResponse.body).toEqual({
+      error: 'Review not found',
+    });
+  });
+
+  it('allows an admin to delete a review owned by another user', async () => {
+    const createResponse = await request(app)
+      .post('/reviews')
+      .set('Authorization', `Bearer ${ownerToken}`)
+      .send(
+        buildReviewCreatePayload({
+          tmdbId: 910006,
+          title: 'Admin moderation target',
+          body: 'This review should be removable by an admin account.',
+        })
+      )
+      .expect(201);
+
+    await request(app)
+      .delete(`/reviews/${createResponse.body.id}`)
+      .set('Authorization', `Bearer ${adminToken}`)
+      .expect(204);
+
+    const getDeletedResponse = await request(app).get(`/reviews/${createResponse.body.id}`);
+
+    expect(getDeletedResponse.status).toBe(404);
+  });
+
+  it('rejects review deletes from non-owner non-admin users', async () => {
+    const createResponse = await request(app)
+      .post('/reviews')
+      .set('Authorization', `Bearer ${ownerToken}`)
+      .send(
+        buildReviewCreatePayload({
+          tmdbId: 910006,
+          title: 'Protected review',
+          body: 'This review should not be deleted by another regular user.',
+        })
+      )
+      .expect(201);
+
+    const deleteResponse = await request(app)
+      .delete(`/reviews/${createResponse.body.id}`)
+      .set('Authorization', `Bearer ${otherToken}`);
+
+    expect(deleteResponse.status).toBe(403);
+    expect(deleteResponse.body).toEqual({
+      error: 'You do not have permission to modify this resource',
     });
   });
 });
