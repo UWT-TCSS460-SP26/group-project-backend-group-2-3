@@ -6,9 +6,57 @@ generator client {
   provider = "prisma-client-js"
 }
 
+enum UserRole {
+  user
+  admin
+}
+
+enum MediaType {
+  movie
+  show
+}
+
 model User {
-  id       Int    @id @default(autoincrement())
-  username String @unique
-  email    String @unique
-  role     String @default("user")
+  id        Int      @id @default(autoincrement())
+  username  String   @unique
+  email     String   @unique
+  role      UserRole @default(user)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @default(now()) @updatedAt
+
+  ratings Rating[]
+  reviews Review[]
+}
+
+model Rating {
+  id        Int       @id @default(autoincrement())
+  userId    Int
+  tmdbId    Int
+  mediaType MediaType
+  score     Int
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @default(now()) @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, tmdbId, mediaType], name: "one_rating_per_user_content", map: "one_rating_per_user_content")
+  @@index([tmdbId, mediaType])
+  @@index([userId])
+}
+
+model Review {
+  id        Int       @id @default(autoincrement())
+  userId    Int
+  tmdbId    Int
+  mediaType MediaType
+  title     String?
+  body      String
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @default(now()) @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, tmdbId, mediaType], name: "one_review_per_user_content", map: "one_review_per_user_content")
+  @@index([tmdbId, mediaType, createdAt(sort: Desc)])
+  @@index([userId])
 }

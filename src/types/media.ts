@@ -1,9 +1,5 @@
 export type MediaType = 'movie' | 'show';
 
-export interface ApiErrorResponse {
-  error: string;
-}
-
 export interface MediaListItem {
   id: number;
   mediaType: MediaType;
