@@ -11,6 +11,8 @@ import {
 let app: typeof import('../src/app').app;
 let prisma: typeof import('../src/lib/prisma').prisma;
 
+jest.setTimeout(30000);
+
 const ownerIdentity = USER_CONTENT_TEST_IDENTITIES.reviewOwner;
 const otherIdentity = USER_CONTENT_TEST_IDENTITIES.reviewOther;
 const testTmdbIds = [...USER_CONTENT_TEST_TMDB_IDS];

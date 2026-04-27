@@ -131,3 +131,43 @@ The group finished setting initial team roles, communication expectations, meeti
 - Team decision: keep a single OpenAPI source of truth aligned to implemented route behavior before final sign-off.
 - Team decision: keep error response shape consistent as `{ "error": "..." }` across routes and tests.
 - Team decision: do final integration gating with a full local test pass before closing sprint completion tasks.
+
+## Sprint 2 Planning and Execution Notes (Apr 20 - Apr 26, 2026)
+
+### Sprint 2 ceremonies
+
+- Sprint planning sync was held on April 20, 2026 to confirm the Prisma persistence scope, JWT auth flow, endpoint contracts, and owner responsibilities.
+- Mid-sprint checkpoints on April 22 and April 24, 2026 were used for dependency tracking, merge timing, and blocker escalation.
+- Final integration review was completed during the April 25-26, 2026 release window before the Sprint 2 branch was considered ready for final merge.
+
+### Sprint 2 task split
+
+- Rudolf owned the cross-cutting foundation and final gate work: Prisma setup, schema/migration/seed flow, authorization helpers, shared response/test/OpenAPI components, and integration sign-off.
+- Collins owned ratings create/read/list work, ratings tests, and ratings OpenAPI coverage.
+- Mani owned reviews create/read/list work, reviews tests, and reviews OpenAPI coverage.
+- Jonathan owned dev auth plumbing, protected mutation route behavior, owner/admin checks, mutation/auth tests, and matching OpenAPI updates.
+
+### Timeline and dependency flow
+
+- Foundation work landed first so endpoint branches could share the same Prisma, auth, and error-handling assumptions.
+- Ratings, reviews, and mutation work proceeded in parallel after the shared model and auth contracts stabilized.
+- Shared response mappers, shared test fixtures, and shared OpenAPI components were added late in the sprint to reduce contract drift between ratings and reviews.
+- Final integration focused on making the branch build, lint, format-check, test, and database-seed cleanly as one Sprint 2 deliverable.
+
+### Final release checklist
+
+- Build: `npm run build` passed.
+- Lint: `npm run lint` passed.
+- Formatting: `npm run format:check` passed.
+- Prisma schema: `npx prisma validate` passed.
+- Migration status: `npx prisma migrate status` reported the configured local database is up to date with the two committed migrations.
+- Seed: `npx prisma db seed` passed and confirmed the idempotent admin seed user.
+- OpenAPI: `openapi.yaml` parsed successfully and all component `$ref`s resolved.
+- Tests: `npm test` passed with 18 test suites and 141 tests passing.
+
+### Final outcome and risks
+
+- Go/no-go decision: go for final Sprint 2 merge.
+- Sprint 2 persistence scope is complete: users, ratings, reviews, dev JWT auth, owner/admin mutation checks, OpenAPI docs, and automated tests are integrated.
+- Remaining environment note: DB-backed Jest tests require `.env` to point at a reachable local PostgreSQL database. Jest now loads `.env` before tests so local runs use the configured database instead of falling back to a stale default port.
+- Fresh temporary database migration reset was not run in this session; migration status and seed were verified against the configured local database, and the full DB-backed test suite passed.
