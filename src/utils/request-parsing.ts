@@ -93,4 +93,3 @@ export const parseMediaTargetFilters = (query: Record<string, unknown>): MediaTa
     ...(mediaType !== undefined ? { mediaType } : {}),
   };
 };
-

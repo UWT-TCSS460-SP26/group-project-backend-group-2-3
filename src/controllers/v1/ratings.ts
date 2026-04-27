@@ -49,7 +49,12 @@ const parseMediaTypeField = (rawValue: unknown): MediaType => {
 };
 
 const parseScoreField = (rawValue: unknown): number => {
-  if (typeof rawValue !== 'number' || !Number.isInteger(rawValue) || rawValue < 1 || rawValue > 10) {
+  if (
+    typeof rawValue !== 'number' ||
+    !Number.isInteger(rawValue) ||
+    rawValue < 1 ||
+    rawValue > 10
+  ) {
     throw new HttpError(HTTP_STATUS.badRequest, 'score must be an integer between 1 and 10');
   }
 
@@ -80,7 +85,10 @@ export const createRating = async (
 
   try {
     const payload = request.body as RatingBodyPayload;
-    const tmdbId = parseRequiredPositiveIntegerField(payload.tmdbId, 'tmdbId must be a positive integer');
+    const tmdbId = parseRequiredPositiveIntegerField(
+      payload.tmdbId,
+      'tmdbId must be a positive integer'
+    );
     const mediaType = parseMediaTypeField(payload.mediaType);
     const score = parseScoreField(payload.score);
 
@@ -240,7 +248,9 @@ export const listRatings = async (
   next: NextFunction
 ): Promise<void> => {
   try {
-    const { page, pageSize, skip, take } = parsePaginationQuery(request.query as Record<string, unknown>);
+    const { page, pageSize, skip, take } = parsePaginationQuery(
+      request.query as Record<string, unknown>
+    );
     const { tmdbId, mediaType } = parseMediaTargetFilters(request.query as Record<string, unknown>);
     const userId = parseOptionalPositiveIntegerFilter(
       request.query.userId,

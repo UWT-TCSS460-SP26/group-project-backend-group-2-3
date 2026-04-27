@@ -61,7 +61,10 @@ export const createMutationAuthTestApp = (
     assertOwner(request.user, resource.ownerId);
   };
 
-  const ensureOwnerOrAdmin = (request: Request<MutationParams>, resource: MutationResource): void => {
+  const ensureOwnerOrAdmin = (
+    request: Request<MutationParams>,
+    resource: MutationResource
+  ): void => {
     assertOwnerOrAdmin(request.user, resource.ownerId);
   };
 

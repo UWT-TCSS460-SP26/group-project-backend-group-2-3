@@ -3,8 +3,8 @@ process.env.JWT_SECRET ??= 'dev-secret';
 
 import request from 'supertest';
 
-const { app } = require('../src/app') as typeof import('../src/app');
-const { prisma } = require('../src/lib/prisma') as typeof import('../src/lib/prisma');
+let app: typeof import('../src/app').app;
+let prisma: typeof import('../src/lib/prisma').prisma;
 
 const ownerIdentity = {
   username: 'reviews-int-owner',
@@ -46,6 +46,9 @@ const login = async (identity: { username: string; email: string }): Promise<str
 
 describe('reviews routes', () => {
   beforeAll(async () => {
+    ({ app } = await import('../src/app'));
+    ({ prisma } = await import('../src/lib/prisma'));
+
     await cleanupTestData();
     ownerToken = await login(ownerIdentity);
     otherToken = await login(otherIdentity);

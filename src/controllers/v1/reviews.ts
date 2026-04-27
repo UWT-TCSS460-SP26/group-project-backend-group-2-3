@@ -119,7 +119,10 @@ export const createReview = async (
 
   try {
     const payload = request.body as ReviewBodyPayload;
-    const tmdbId = parseRequiredPositiveIntegerField(payload.tmdbId, 'tmdbId must be a positive integer');
+    const tmdbId = parseRequiredPositiveIntegerField(
+      payload.tmdbId,
+      'tmdbId must be a positive integer'
+    );
     const mediaType = parseMediaTypeField(payload.mediaType);
     const title = parseOptionalTitleField(payload.title);
     const body = parseBodyField(payload.body);
@@ -194,7 +197,9 @@ export const listReviews = async (
   next: NextFunction
 ): Promise<void> => {
   try {
-    const { page, pageSize, skip, take } = parsePaginationQuery(request.query as Record<string, unknown>);
+    const { page, pageSize, skip, take } = parsePaginationQuery(
+      request.query as Record<string, unknown>
+    );
     const { tmdbId, mediaType } = parseMediaTargetFilters(request.query as Record<string, unknown>);
     const userId = parseOptionalPositiveIntegerFilter(
       request.query.userId,

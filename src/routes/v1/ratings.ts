@@ -1,5 +1,11 @@
 import { Router } from 'express';
-import { createRating, deleteRating, getRatingById, listRatings, updateRating } from '../../controllers/v1/ratings';
+import {
+  createRating,
+  deleteRating,
+  getRatingById,
+  listRatings,
+  updateRating,
+} from '../../controllers/v1/ratings';
 import { requireAuth } from '../../middleware/requireAuth';
 
 const router = Router();
