@@ -19,6 +19,8 @@ tags:
     description: Movie routes proxied from TMDB
   - name: Shows
     description: TV show routes proxied from TMDB
+  - name: Ratings
+    description: User ratings for movies and TV shows
 
 paths:
   /health:
@@ -806,6 +808,372 @@ paths:
                   value:
                     error: TMDB request failed
 
+  /api/v1/ratings:
+    get:
+      tags: [Ratings]
+      summary: List ratings
+      description: Returns a paginated list of ratings. All filters are optional.
+      parameters:
+        - in: query
+          name: page
+          required: false
+          description: Page number. Defaults to 1.
+          schema:
+            type: integer
+            minimum: 1
+            default: 1
+          example: 1
+        - in: query
+          name: pageSize
+          required: false
+          description: Results per page. Defaults to 10, max 50.
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 50
+            default: 10
+          example: 10
+        - in: query
+          name: tmdbId
+          required: false
+          description: Filter by TMDB identifier.
+          schema:
+            type: integer
+            minimum: 1
+          example: 550
+        - in: query
+          name: mediaType
+          required: false
+          description: Filter by media type.
+          schema:
+            type: string
+            enum: [movie, show]
+          example: movie
+        - in: query
+          name: userId
+          required: false
+          description: Filter by author user ID.
+          schema:
+            type: integer
+            minimum: 1
+          example: 1
+      responses:
+        '200':
+          description: Paginated list of ratings
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RatingListResponse'
+              examples:
+                success:
+                  value:
+                    page: 1
+                    pageSize: 10
+                    totalPages: 1
+                    totalResults: 1
+                    results:
+                      - id: 1
+                        tmdbId: 550
+                        mediaType: movie
+                        score: 8
+                        createdAt: "2026-01-01T00:00:00.000Z"
+                        updatedAt: "2026-01-01T00:00:00.000Z"
+                        author:
+                          id: 1
+                          username: alice
+        '400':
+          description: Invalid query parameters
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiErrorResponse'
+              examples:
+                invalidPage:
+                  value:
+                    error: Query parameter page must be a positive integer
+                invalidPageSize:
+                  value:
+                    error: Query parameter pageSize must be 50 or less
+                invalidMediaType:
+                  value:
+                    error: Query parameter mediaType must be either movie or show
+
+    post:
+      tags: [Ratings]
+      summary: Create a rating
+      description: >
+        Submits a rating for a TMDB title. Requires authentication.
+        One rating per user per title — returns 409 if the user has already rated this item.
+        The author is always taken from the JWT; never send a userId in the body.
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - tmdbId
+                - mediaType
+                - score
+              properties:
+                tmdbId:
+                  type: integer
+                  minimum: 1
+                  example: 550
+                mediaType:
+                  type: string
+                  enum: [movie, show]
+                  example: movie
+                score:
+                  type: integer
+                  minimum: 1
+                  maximum: 10
+                  example: 8
+            example:
+              tmdbId: 550
+              mediaType: movie
+              score: 8
+      responses:
+        '201':
+          description: Rating created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RatingResponse'
+              examples:
+                success:
+                  value:
+                    id: 1
+                    tmdbId: 550
+                    mediaType: movie
+                    score: 8
+                    createdAt: "2026-01-01T00:00:00.000Z"
+                    updatedAt: "2026-01-01T00:00:00.000Z"
+                    author:
+                      id: 1
+                      username: alice
+        '400':
+          description: Validation error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiErrorResponse'
+              examples:
+                invalidTmdbId:
+                  value:
+                    error: tmdbId must be a positive integer
+                invalidMediaType:
+                  value:
+                    error: mediaType must be either movie or show
+                invalidScore:
+                  value:
+                    error: score must be an integer between 1 and 10
+        '401':
+          description: Missing or invalid token
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiErrorResponse'
+              examples:
+                missingToken:
+                  value:
+                    error: Missing or malformed Authorization header
+                expiredToken:
+                  value:
+                    error: Invalid or expired token
+        '409':
+          description: User has already rated this item
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiErrorResponse'
+              examples:
+                duplicate:
+                  value:
+                    error: You have already rated this item
+
+  /api/v1/ratings/{id}:
+    get:
+      tags: [Ratings]
+      summary: Get a rating by ID
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: integer
+            minimum: 1
+          example: 1
+      responses:
+        '200':
+          description: Rating found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RatingResponse'
+              examples:
+                success:
+                  value:
+                    id: 1
+                    tmdbId: 550
+                    mediaType: movie
+                    score: 8
+                    createdAt: "2026-01-01T00:00:00.000Z"
+                    updatedAt: "2026-01-01T00:00:00.000Z"
+                    author:
+                      id: 1
+                      username: alice
+        '404':
+          description: Rating not found or invalid ID
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiErrorResponse'
+              examples:
+                notFound:
+                  value:
+                    error: Rating not found
+
+    put:
+      tags: [Ratings]
+      summary: Update a rating
+      description: Updates the score on a rating. Only the original author can update.
+      security:
+        - BearerAuth: []
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: integer
+            minimum: 1
+          example: 1
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - score
+              properties:
+                score:
+                  type: integer
+                  minimum: 1
+                  maximum: 10
+                  example: 9
+            example:
+              score: 9
+      responses:
+        '200':
+          description: Rating updated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RatingResponse'
+              examples:
+                success:
+                  value:
+                    id: 1
+                    tmdbId: 550
+                    mediaType: movie
+                    score: 9
+                    createdAt: "2026-01-01T00:00:00.000Z"
+                    updatedAt: "2026-01-02T00:00:00.000Z"
+                    author:
+                      id: 1
+                      username: alice
+        '400':
+          description: Invalid score
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiErrorResponse'
+              examples:
+                invalidScore:
+                  value:
+                    error: score must be an integer between 1 and 10
+        '401':
+          description: Missing or invalid token
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiErrorResponse'
+              examples:
+                missingToken:
+                  value:
+                    error: Missing or malformed Authorization header
+        '403':
+          description: Authenticated user does not own this rating
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiErrorResponse'
+              examples:
+                forbidden:
+                  value:
+                    error: You do not have permission to modify this resource
+        '404':
+          description: Rating not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiErrorResponse'
+              examples:
+                notFound:
+                  value:
+                    error: Rating not found
+
+    delete:
+      tags: [Ratings]
+      summary: Delete a rating
+      description: Deletes a rating. Only the original author can delete their rating.
+      security:
+        - BearerAuth: []
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: integer
+            minimum: 1
+          example: 1
+      responses:
+        '204':
+          description: Rating deleted
+        '401':
+          description: Missing or invalid token
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiErrorResponse'
+              examples:
+                missingToken:
+                  value:
+                    error: Missing or malformed Authorization header
+        '403':
+          description: Authenticated user does not own this rating
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiErrorResponse'
+              examples:
+                forbidden:
+                  value:
+                    error: You do not have permission to modify this resource
+        '404':
+          description: Rating not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiErrorResponse'
+              examples:
+                notFound:
+                  value:
+                    error: Rating not found
+
 components:
   schemas:
     ApiErrorResponse:
@@ -980,3 +1348,83 @@ components:
           type: number
           format: float
           example: 8.9
+
+    RatingResponse:
+      type: object
+      required:
+        - id
+        - tmdbId
+        - mediaType
+        - score
+        - createdAt
+        - updatedAt
+        - author
+      properties:
+        id:
+          type: integer
+          example: 1
+        tmdbId:
+          type: integer
+          example: 550
+        mediaType:
+          type: string
+          enum: [movie, show]
+          example: movie
+        score:
+          type: integer
+          minimum: 1
+          maximum: 10
+          example: 8
+        createdAt:
+          type: string
+          format: date-time
+          example: "2026-01-01T00:00:00.000Z"
+        updatedAt:
+          type: string
+          format: date-time
+          example: "2026-01-01T00:00:00.000Z"
+        author:
+          type: object
+          required:
+            - id
+            - username
+          properties:
+            id:
+              type: integer
+              example: 1
+            username:
+              type: string
+              example: alice
+
+    RatingListResponse:
+      type: object
+      required:
+        - page
+        - pageSize
+        - totalPages
+        - totalResults
+        - results
+      properties:
+        page:
+          type: integer
+          example: 1
+        pageSize:
+          type: integer
+          example: 10
+        totalPages:
+          type: integer
+          example: 1
+        totalResults:
+          type: integer
+          example: 1
+        results:
+          type: array
+          items:
+            $ref: '#/components/schemas/RatingResponse'
+
+  securitySchemes:
+    BearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+      description: JWT obtained from POST /auth/dev-login
