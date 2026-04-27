@@ -64,6 +64,18 @@ describe('mutation auth: ownership and role behavior', () => {
       expect(response.status).toBe(403);
       expect(response.body.error).toMatch(/do not have permission/i);
     });
+
+    it('404 when target resource does not exist', async () => {
+      const token = createAccessToken({ sub: 1, email: 'owner@example.test' });
+
+      const response = await request(app)
+        .patch('/test/reviews/missing')
+        .set(authHeader(token))
+        .send({ text: 'missing resource' });
+
+      expect(response.status).toBe(404);
+      expect(response.body).toEqual({ error: 'Resource not found' });
+    });
   });
 
   describe('DELETE /test/reviews/:id (owner or admin)', () => {
@@ -104,6 +116,15 @@ describe('mutation auth: ownership and role behavior', () => {
         id: 'nonOwned',
         deletedBy: 1,
       });
+    });
+
+    it('404 when delete target does not exist', async () => {
+      const token = createAccessToken({ sub: 1, email: 'owner@example.test' });
+
+      const response = await request(app).delete('/test/reviews/missing').set(authHeader(token));
+
+      expect(response.status).toBe(404);
+      expect(response.body).toEqual({ error: 'Resource not found' });
     });
   });
 });

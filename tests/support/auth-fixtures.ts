@@ -1,4 +1,5 @@
 import express, { Request, Response } from 'express';
+import { ParamsDictionary } from 'express-serve-static-core';
 import jwt from 'jsonwebtoken';
 import { errorHandler } from '../../src/middleware/error-handler';
 import { requireAuth } from '../../src/middleware/requireAuth';
@@ -11,6 +12,10 @@ export interface MutationResource {
   id: string;
   ownerId: number;
   text: string;
+}
+
+interface MutationParams extends ParamsDictionary {
+  id: string;
 }
 
 const defaultResources: Record<string, MutationResource> = {
@@ -39,32 +44,47 @@ export const createMutationAuthTestApp = (
   const app = express();
   app.use(express.json());
 
-  app.patch(
+  const getResourceOrNotFound = (
+    request: Request<MutationParams>,
+    response: Response
+  ): MutationResource | null => {
+    const resource = resources[request.params.id];
+    if (!resource) {
+      response.status(404).json({ error: 'Resource not found' });
+      return null;
+    }
+
+    return resource;
+  };
+
+  const ensureOwner = (request: Request<MutationParams>, resource: MutationResource): void => {
+    assertOwner(request.user, resource.ownerId);
+  };
+
+  const ensureOwnerOrAdmin = (request: Request<MutationParams>, resource: MutationResource): void => {
+    assertOwnerOrAdmin(request.user, resource.ownerId);
+  };
+
+  app.patch<MutationParams>(
     '/test/reviews/:id',
     requireAuth,
-    (request: Request<{ id: string }>, response: Response) => {
-      const resource = resources[request.params.id];
-      if (!resource) {
-        response.status(404).json({ error: 'Resource not found' });
-        return;
-      }
+    (request: Request<MutationParams>, response: Response) => {
+      const resource = getResourceOrNotFound(request, response);
+      if (!resource) return;
 
-      assertOwner(request.user, resource.ownerId);
+      ensureOwner(request, resource);
       response.status(200).json({ ok: true, id: resource.id, updatedBy: request.user?.sub });
     }
   );
 
-  app.delete(
+  app.delete<MutationParams>(
     '/test/reviews/:id',
     requireAuth,
-    (request: Request<{ id: string }>, response: Response) => {
-      const resource = resources[request.params.id];
-      if (!resource) {
-        response.status(404).json({ error: 'Resource not found' });
-        return;
-      }
+    (request: Request<MutationParams>, response: Response) => {
+      const resource = getResourceOrNotFound(request, response);
+      if (!resource) return;
 
-      assertOwnerOrAdmin(request.user, resource.ownerId);
+      ensureOwnerOrAdmin(request, resource);
       response.status(200).json({ ok: true, id: resource.id, deletedBy: request.user?.sub });
     }
   );
