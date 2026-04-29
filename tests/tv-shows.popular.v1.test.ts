@@ -27,7 +27,7 @@ const makeTmdbPopularResponse = (overrides = {}) => ({
   ...overrides,
 });
 
-describe('GET /api/v2/tv-shows/popular', () => {
+describe('GET /api/v1/tv-shows/popular', () => {
   beforeAll(() => {
     process.env.TMDB_API_KEY = 'test-api-key';
   });
@@ -39,7 +39,7 @@ describe('GET /api/v2/tv-shows/popular', () => {
   it('returns shaped results when page is valid', async () => {
     mockedTmdbClient.getPopularShows.mockResolvedValueOnce(makeTmdbPopularResponse());
 
-    const response = await request(app).get('/api/v2/tv-shows/popular').query({ page: '1' });
+    const response = await request(app).get('/api/v1/tv-shows/popular').query({ page: '1' });
 
     expect(response.status).toBe(200);
     expect(mockedTmdbClient.getPopularShows).toHaveBeenCalledWith(1);

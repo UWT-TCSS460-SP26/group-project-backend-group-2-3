@@ -1,12 +1,12 @@
+import { Buffer } from 'node:buffer';
 import express, { Request, Response } from 'express';
 import { ParamsDictionary } from 'express-serve-static-core';
-import jwt from 'jsonwebtoken';
 import { errorHandler } from '../../src/middleware/error-handler';
 import { requireAuth } from '../../src/middleware/requireAuth';
 import { USER_ROLES, AuthenticatedUser } from '../../src/types/auth';
 import { assertOwner, assertOwnerOrAdmin } from '../../src/utils/authorization';
 
-export const TEST_JWT_SECRET = 'test-jwt-secret';
+export const TEST_AUTH_HEADER = 'x-test-auth';
 
 export interface MutationResource {
   id: string;
@@ -26,16 +26,24 @@ const defaultResources: Record<string, MutationResource> = {
 export const createAccessToken = (overrides: Partial<AuthenticatedUser> = {}): string => {
   const payload: AuthenticatedUser = {
     sub: 1,
+    subjectId: `auth2|test-user-${overrides.sub ?? 1}`,
     email: 'user1@example.test',
     role: USER_ROLES.user,
     ...overrides,
   };
+  const claims = {
+    sub: payload.subjectId,
+    local_user_id: payload.sub,
+    email: payload.email,
+    role: payload.role,
+  };
 
-  return jwt.sign(payload, TEST_JWT_SECRET, { expiresIn: '1h' });
+  return Buffer.from(JSON.stringify(claims)).toString('base64url');
 };
 
-export const authHeader = (token: string): { Authorization: string } => ({
+export const authHeader = (token: string): Record<string, string> => ({
   Authorization: `Bearer ${token}`,
+  [TEST_AUTH_HEADER]: token,
 });
 
 export const createMutationAuthTestApp = (

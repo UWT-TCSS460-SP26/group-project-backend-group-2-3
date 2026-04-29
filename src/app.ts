@@ -1,17 +1,35 @@
 import express, { Request, Response } from 'express';
-import cors from 'cors';
+import cors, { CorsOptions } from 'cors';
 import fs from 'fs';
 import YAML from 'yaml';
 import { apiReference } from '@scalar/express-api-reference';
 import { v1Router } from './routes/v1';
-import { v2Router } from './routes/v2';
 import { errorHandler } from './middleware/error-handler';
-import devAuthRouter from './routes/devAuth';
+
+const parseAllowedOrigins = (): string[] =>
+  (process.env.CORS_ALLOWED_ORIGINS ?? '')
+    .split(',')
+    .map((origin) => origin.trim())
+    .filter(Boolean);
+
+const allowedOrigins = parseAllowedOrigins();
+const corsOptions: CorsOptions = {
+  allowedHeaders: ['Authorization', 'Content-Type'],
+  methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
+  origin(origin, callback) {
+    if (!origin || allowedOrigins.length === 0 || allowedOrigins.includes(origin)) {
+      callback(null, true);
+      return;
+    }
+
+    callback(null, false);
+  },
+};
 
 const app = express();
 
 // Application-level middleware
-app.use(cors());
+app.use(cors(corsOptions));
 app.use(express.json());
 
 // OpenAPI documentation
@@ -32,15 +50,10 @@ app.get('/health', (_request: Request, response: Response) => {
 
 // Primary versioned API routes (checkoff-style)
 app.use('/v1', v1Router);
-app.use('/v2', v2Router);
 
 // Backward-compatible aliases while clients migrate.
 app.use('/api/v1', v1Router);
-app.use('/api/v2', v2Router);
 app.use('/', v1Router);
-
-// Dev-only auth (Sprint 2) — remove before production
-app.use('/auth', devAuthRouter);
 
 // 404 handler — must be after all routes
 app.use((_request: Request, response: Response) => {

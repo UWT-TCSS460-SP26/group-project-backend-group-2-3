@@ -1,7 +1,8 @@
 process.env.DATABASE_URL ??= 'postgresql://postgres:password@localhost:5433/tcss460?schema=public';
-process.env.JWT_SECRET ??= 'dev-secret';
 
 import request from 'supertest';
+import { USER_ROLES } from '../src/types/auth';
+import { authHeader, createAccessToken } from './support/auth-fixtures';
 import {
   buildReviewCreatePayload,
   USER_CONTENT_TEST_IDENTITIES,
@@ -19,6 +20,9 @@ const adminIdentity = {
   username: 'reviews-int-admin',
   email: 'reviews-int-admin@example.test',
 };
+const ownerSubjectId = 'auth2|reviews-owner';
+const otherSubjectId = 'auth2|reviews-other';
+const adminSubjectId = 'auth2|reviews-admin';
 const testTmdbIds = [...USER_CONTENT_TEST_TMDB_IDS];
 
 let ownerToken = '';
@@ -39,31 +43,52 @@ const cleanupTestData = async (): Promise<void> => {
   });
 };
 
-const login = async (identity: { username: string; email: string }): Promise<string> => {
-  const response = await request(app).post('/auth/dev-login').send(identity);
-
-  expect(response.status).toBe(200);
-  expect(response.body).toHaveProperty('token');
-
-  return response.body.token as string;
-};
-
 describe('reviews routes', () => {
   beforeAll(async () => {
     ({ app } = await import('../src/app'));
     ({ prisma } = await import('../src/lib/prisma'));
 
     await cleanupTestData();
-    await prisma.user.create({
+    const ownerUser = await prisma.user.create({
       data: {
+        subjectId: ownerSubjectId,
+        username: ownerIdentity.username,
+        email: ownerIdentity.email,
+      },
+    });
+    const otherUser = await prisma.user.create({
+      data: {
+        subjectId: otherSubjectId,
+        username: otherIdentity.username,
+        email: otherIdentity.email,
+      },
+    });
+    const adminUser = await prisma.user.create({
+      data: {
+        subjectId: adminSubjectId,
         username: adminIdentity.username,
         email: adminIdentity.email,
         role: 'admin',
       },
     });
-    ownerToken = await login(ownerIdentity);
-    otherToken = await login(otherIdentity);
-    adminToken = await login(adminIdentity);
+    ownerToken = createAccessToken({
+      sub: ownerUser.id,
+      subjectId: ownerSubjectId,
+      email: ownerUser.email,
+      role: USER_ROLES.user,
+    });
+    otherToken = createAccessToken({
+      sub: otherUser.id,
+      subjectId: otherSubjectId,
+      email: otherUser.email,
+      role: USER_ROLES.user,
+    });
+    adminToken = createAccessToken({
+      sub: adminUser.id,
+      subjectId: adminSubjectId,
+      email: adminUser.email,
+      role: USER_ROLES.admin,
+    });
   });
 
   afterEach(async () => {
@@ -82,7 +107,7 @@ describe('reviews routes', () => {
   it('creates, gets, and lists reviews using the real mapped contract', async () => {
     const createResponse = await request(app)
       .post('/reviews')
-      .set('Authorization', `Bearer ${ownerToken}`)
+      .set(authHeader(ownerToken))
       .send(
         buildReviewCreatePayload({
           title: '  Great watch  ',
@@ -113,7 +138,7 @@ describe('reviews routes', () => {
 
     await request(app)
       .post('/reviews')
-      .set('Authorization', `Bearer ${otherToken}`)
+      .set(authHeader(otherToken))
       .send(
         buildReviewCreatePayload({
           tmdbId: 910002,
@@ -141,7 +166,7 @@ describe('reviews routes', () => {
   it('returns 400 for invalid review payloads and list query params', async () => {
     const invalidCreateResponse = await request(app)
       .post('/reviews')
-      .set('Authorization', `Bearer ${ownerToken}`)
+      .set(authHeader(ownerToken))
       .send({
         tmdbId: '910003',
         mediaType: 'movie',
@@ -153,14 +178,11 @@ describe('reviews routes', () => {
       error: 'tmdbId must be a positive integer',
     });
 
-    const shortBodyResponse = await request(app)
-      .post('/reviews')
-      .set('Authorization', `Bearer ${ownerToken}`)
-      .send({
-        tmdbId: 910003,
-        mediaType: 'movie',
-        body: 'too short',
-      });
+    const shortBodyResponse = await request(app).post('/reviews').set(authHeader(ownerToken)).send({
+      tmdbId: 910003,
+      mediaType: 'movie',
+      body: 'too short',
+    });
 
     expect(shortBodyResponse.status).toBe(400);
     expect(shortBodyResponse.body).toEqual({
@@ -206,15 +228,11 @@ describe('reviews routes', () => {
       body: 'This one held up even better on a second viewing than the first.',
     });
 
-    await request(app)
-      .post('/reviews')
-      .set('Authorization', `Bearer ${ownerToken}`)
-      .send(payload)
-      .expect(201);
+    await request(app).post('/reviews').set(authHeader(ownerToken)).send(payload).expect(201);
 
     const duplicateResponse = await request(app)
       .post('/reviews')
-      .set('Authorization', `Bearer ${ownerToken}`)
+      .set(authHeader(ownerToken))
       .send(payload);
 
     expect(duplicateResponse.status).toBe(409);
@@ -226,7 +244,7 @@ describe('reviews routes', () => {
   it('updates a review when the authenticated user owns it', async () => {
     const createResponse = await request(app)
       .post('/reviews')
-      .set('Authorization', `Bearer ${ownerToken}`)
+      .set(authHeader(ownerToken))
       .send(
         buildReviewCreatePayload({
           tmdbId: 910005,
@@ -238,7 +256,7 @@ describe('reviews routes', () => {
 
     const updateResponse = await request(app)
       .put(`/reviews/${createResponse.body.id}`)
-      .set('Authorization', `Bearer ${ownerToken}`)
+      .set(authHeader(ownerToken))
       .send({
         title: 'Updated review',
         body: 'This updated review has enough detail for validation to pass.',
@@ -259,7 +277,7 @@ describe('reviews routes', () => {
   it('rejects review updates from non-owners', async () => {
     const createResponse = await request(app)
       .post('/reviews')
-      .set('Authorization', `Bearer ${ownerToken}`)
+      .set(authHeader(ownerToken))
       .send(
         buildReviewCreatePayload({
           tmdbId: 910005,
@@ -271,7 +289,7 @@ describe('reviews routes', () => {
 
     const updateResponse = await request(app)
       .put(`/reviews/${createResponse.body.id}`)
-      .set('Authorization', `Bearer ${otherToken}`)
+      .set(authHeader(otherToken))
       .send({
         title: 'Forbidden update',
         body: 'This update should fail because the requester is not the owner.',
@@ -286,7 +304,7 @@ describe('reviews routes', () => {
   it('deletes a review when the authenticated user owns it', async () => {
     const createResponse = await request(app)
       .post('/reviews')
-      .set('Authorization', `Bearer ${ownerToken}`)
+      .set(authHeader(ownerToken))
       .send(
         buildReviewCreatePayload({
           tmdbId: 910006,
@@ -298,7 +316,7 @@ describe('reviews routes', () => {
 
     await request(app)
       .delete(`/reviews/${createResponse.body.id}`)
-      .set('Authorization', `Bearer ${ownerToken}`)
+      .set(authHeader(ownerToken))
       .expect(204);
 
     const getDeletedResponse = await request(app).get(`/reviews/${createResponse.body.id}`);
@@ -312,7 +330,7 @@ describe('reviews routes', () => {
   it('allows an admin to delete a review owned by another user', async () => {
     const createResponse = await request(app)
       .post('/reviews')
-      .set('Authorization', `Bearer ${ownerToken}`)
+      .set(authHeader(ownerToken))
       .send(
         buildReviewCreatePayload({
           tmdbId: 910006,
@@ -324,7 +342,7 @@ describe('reviews routes', () => {
 
     await request(app)
       .delete(`/reviews/${createResponse.body.id}`)
-      .set('Authorization', `Bearer ${adminToken}`)
+      .set(authHeader(adminToken))
       .expect(204);
 
     const getDeletedResponse = await request(app).get(`/reviews/${createResponse.body.id}`);
@@ -335,7 +353,7 @@ describe('reviews routes', () => {
   it('rejects review deletes from non-owner non-admin users', async () => {
     const createResponse = await request(app)
       .post('/reviews')
-      .set('Authorization', `Bearer ${ownerToken}`)
+      .set(authHeader(ownerToken))
       .send(
         buildReviewCreatePayload({
           tmdbId: 910006,
@@ -347,7 +365,7 @@ describe('reviews routes', () => {
 
     const deleteResponse = await request(app)
       .delete(`/reviews/${createResponse.body.id}`)
-      .set('Authorization', `Bearer ${otherToken}`);
+      .set(authHeader(otherToken));
 
     expect(deleteResponse.status).toBe(403);
     expect(deleteResponse.body).toEqual({

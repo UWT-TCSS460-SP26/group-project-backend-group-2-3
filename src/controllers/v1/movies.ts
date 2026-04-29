@@ -59,13 +59,16 @@ export const searchMovies = async (
   next: NextFunction
 ): Promise<void> => {
   try {
-    const q = parseRequiredQueryString(request.query.q, 'Query parameter q is required');
+    const title = parseRequiredQueryString(
+      request.query.title,
+      'Query parameter title is required'
+    );
     const page = parseOptionalPositiveIntegerQuery(
       request.query.page,
       'Query parameter page must be a positive integer'
     );
     const { imageBaseUrl } = getTmdbConfig();
-    const data = await tmdbClient.searchMovies(q, page);
+    const data = await tmdbClient.searchMovies(title, page);
     response.json(toMovieListResponse(data, imageBaseUrl));
   } catch (error) {
     next(error);

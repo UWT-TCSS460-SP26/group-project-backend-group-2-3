@@ -1,8 +1,8 @@
 import request from 'supertest';
 import { app } from '../src/app';
 import { prisma } from '../src/lib/prisma';
-import { UserRole } from '../src/types/auth';
-import { createAccessToken, TEST_JWT_SECRET } from './support/auth-fixtures';
+import { USER_ROLES, UserRole } from '../src/types/auth';
+import { authHeader, createAccessToken } from './support/auth-fixtures';
 import { buildRatingRecord, buildRatingResponse } from './support/user-content-fixtures';
 
 // ---------------------------------------------------------------------------
@@ -19,6 +19,11 @@ jest.mock('../src/lib/prisma', () => ({
       count: jest.fn(),
       findMany: jest.fn(),
     },
+    user: {
+      findUnique: jest.fn(),
+      update: jest.fn(),
+      create: jest.fn(),
+    },
     $transaction: jest.fn(),
   },
 }));
@@ -28,17 +33,34 @@ const mockFindUnique = prisma.rating.findUnique as jest.Mock;
 const mockUpdate = prisma.rating.update as jest.Mock;
 const mockDelete = prisma.rating.delete as jest.Mock;
 const mockTransaction = prisma.$transaction as jest.Mock;
+const mockUserFindUnique = prisma.user.findUnique as jest.Mock;
 
 // ---------------------------------------------------------------------------
-// JWT helper — mints tokens directly without calling dev-login
+// Test auth helper — bypasses real Auth2/JWKS verification in Jest
 // ---------------------------------------------------------------------------
-const makeToken = (userId = 1, role: UserRole = 'user') =>
+const makeToken = (userId = 1, role: UserRole = USER_ROLES.user) =>
   createAccessToken({ sub: userId, email: `user${userId}@test.com`, role });
 
 beforeEach(() => {
   jest.resetAllMocks();
   process.env.TMDB_API_KEY = 'test-api-key';
-  process.env.JWT_SECRET = TEST_JWT_SECRET;
+  mockUserFindUnique.mockImplementation(({ where }: { where: { subjectId?: string } }) => {
+    if (!where.subjectId) {
+      return Promise.resolve(null);
+    }
+
+    return Promise.resolve({
+      id: 1,
+      subjectId: where.subjectId,
+      username: 'local-user',
+      email: 'local-user@example.test',
+      firstName: null,
+      lastName: null,
+      role: 'user',
+      createdAt: new Date('2026-01-01T00:00:00.000Z'),
+      updatedAt: new Date('2026-01-01T00:00:00.000Z'),
+    });
+  });
 });
 
 // ---------------------------------------------------------------------------
@@ -66,6 +88,7 @@ describe('GET /api/v1/ratings', () => {
       totalResults: 1,
       results: [expectedRating],
     });
+    expect(mockUserFindUnique).not.toHaveBeenCalled();
   });
 
   it('200 — returns empty results when no ratings exist', async () => {
@@ -141,20 +164,36 @@ describe('GET /api/v1/ratings', () => {
 describe('POST /api/v1/ratings', () => {
   it('201 — creates rating and returns transformed response', async () => {
     mockCreate.mockResolvedValue(mockRatingRow);
+    mockUserFindUnique.mockResolvedValueOnce({
+      id: 42,
+      subjectId: 'auth2|test-user-999',
+      username: 'mapped-user',
+      email: 'mapped-user@example.test',
+      firstName: null,
+      lastName: null,
+      role: 'user',
+      createdAt: new Date('2026-01-01T00:00:00.000Z'),
+      updatedAt: new Date('2026-01-01T00:00:00.000Z'),
+    });
 
     const res = await request(app)
       .post('/api/v1/ratings')
-      .set('Authorization', `Bearer ${makeToken(1)}`)
+      .set(authHeader(makeToken(999)))
       .send({ tmdbId: 550, mediaType: 'movie', score: 8 });
 
     expect(res.status).toBe(201);
     expect(res.body).toEqual(expectedRating);
+    expect(mockCreate).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.objectContaining({ userId: 42 }),
+      })
+    );
   });
 
   it('400 — missing tmdbId returns error', async () => {
     const res = await request(app)
       .post('/api/v1/ratings')
-      .set('Authorization', `Bearer ${makeToken(1)}`)
+      .set(authHeader(makeToken(1)))
       .send({ mediaType: 'movie', score: 8 });
 
     expect(res.status).toBe(400);
@@ -164,7 +203,7 @@ describe('POST /api/v1/ratings', () => {
   it('400 — tmdbId of 0 returns error', async () => {
     const res = await request(app)
       .post('/api/v1/ratings')
-      .set('Authorization', `Bearer ${makeToken(1)}`)
+      .set(authHeader(makeToken(1)))
       .send({ tmdbId: 0, mediaType: 'movie', score: 8 });
 
     expect(res.status).toBe(400);
@@ -174,7 +213,7 @@ describe('POST /api/v1/ratings', () => {
   it('400 — missing mediaType returns error', async () => {
     const res = await request(app)
       .post('/api/v1/ratings')
-      .set('Authorization', `Bearer ${makeToken(1)}`)
+      .set(authHeader(makeToken(1)))
       .send({ tmdbId: 550, score: 8 });
 
     expect(res.status).toBe(400);
@@ -184,7 +223,7 @@ describe('POST /api/v1/ratings', () => {
   it('400 — invalid mediaType returns error', async () => {
     const res = await request(app)
       .post('/api/v1/ratings')
-      .set('Authorization', `Bearer ${makeToken(1)}`)
+      .set(authHeader(makeToken(1)))
       .send({ tmdbId: 550, mediaType: 'film', score: 8 });
 
     expect(res.status).toBe(400);
@@ -194,7 +233,7 @@ describe('POST /api/v1/ratings', () => {
   it('400 — missing score returns error', async () => {
     const res = await request(app)
       .post('/api/v1/ratings')
-      .set('Authorization', `Bearer ${makeToken(1)}`)
+      .set(authHeader(makeToken(1)))
       .send({ tmdbId: 550, mediaType: 'movie' });
 
     expect(res.status).toBe(400);
@@ -204,7 +243,7 @@ describe('POST /api/v1/ratings', () => {
   it('400 — score of 0 returns error', async () => {
     const res = await request(app)
       .post('/api/v1/ratings')
-      .set('Authorization', `Bearer ${makeToken(1)}`)
+      .set(authHeader(makeToken(1)))
       .send({ tmdbId: 550, mediaType: 'movie', score: 0 });
 
     expect(res.status).toBe(400);
@@ -214,7 +253,7 @@ describe('POST /api/v1/ratings', () => {
   it('400 — score of 11 returns error', async () => {
     const res = await request(app)
       .post('/api/v1/ratings')
-      .set('Authorization', `Bearer ${makeToken(1)}`)
+      .set(authHeader(makeToken(1)))
       .send({ tmdbId: 550, mediaType: 'movie', score: 11 });
 
     expect(res.status).toBe(400);
@@ -224,7 +263,7 @@ describe('POST /api/v1/ratings', () => {
   it('400 — float score returns error', async () => {
     const res = await request(app)
       .post('/api/v1/ratings')
-      .set('Authorization', `Bearer ${makeToken(1)}`)
+      .set(authHeader(makeToken(1)))
       .send({ tmdbId: 550, mediaType: 'movie', score: 7.5 });
 
     expect(res.status).toBe(400);
@@ -234,7 +273,7 @@ describe('POST /api/v1/ratings', () => {
   it('400 — string score returns error', async () => {
     const res = await request(app)
       .post('/api/v1/ratings')
-      .set('Authorization', `Bearer ${makeToken(1)}`)
+      .set(authHeader(makeToken(1)))
       .send({ tmdbId: 550, mediaType: 'movie', score: '8' });
 
     expect(res.status).toBe(400);
@@ -267,7 +306,7 @@ describe('POST /api/v1/ratings', () => {
 
     const res = await request(app)
       .post('/api/v1/ratings')
-      .set('Authorization', `Bearer ${makeToken(1)}`)
+      .set(authHeader(makeToken(1)))
       .send({ tmdbId: 550, mediaType: 'movie', score: 8 });
 
     expect(res.status).toBe(409);
@@ -320,7 +359,7 @@ describe('PUT /api/v1/ratings/:id', () => {
 
     const res = await request(app)
       .put('/api/v1/ratings/1')
-      .set('Authorization', `Bearer ${makeToken(1)}`)
+      .set(authHeader(makeToken(1)))
       .send({ score: 9 });
 
     expect(res.status).toBe(200);
@@ -334,7 +373,7 @@ describe('PUT /api/v1/ratings/:id', () => {
 
     const res = await request(app)
       .put('/api/v1/ratings/1')
-      .set('Authorization', `Bearer ${makeToken(1)}`)
+      .set(authHeader(makeToken(1)))
       .send({ score: 15 });
 
     expect(res.status).toBe(400);
@@ -346,7 +385,7 @@ describe('PUT /api/v1/ratings/:id', () => {
 
     const res = await request(app)
       .put('/api/v1/ratings/1')
-      .set('Authorization', `Bearer ${makeToken(1)}`)
+      .set(authHeader(makeToken(1)))
       .send({ score: 0 });
 
     expect(res.status).toBe(400);
@@ -366,7 +405,7 @@ describe('PUT /api/v1/ratings/:id', () => {
 
     const res = await request(app)
       .put('/api/v1/ratings/1')
-      .set('Authorization', `Bearer ${makeToken(1)}`)
+      .set(authHeader(makeToken(1)))
       .send({ score: 9 });
 
     expect(res.status).toBe(403);
@@ -378,7 +417,7 @@ describe('PUT /api/v1/ratings/:id', () => {
 
     const res = await request(app)
       .put('/api/v1/ratings/9999')
-      .set('Authorization', `Bearer ${makeToken(1)}`)
+      .set(authHeader(makeToken(1)))
       .send({ score: 9 });
 
     expect(res.status).toBe(404);
@@ -388,7 +427,7 @@ describe('PUT /api/v1/ratings/:id', () => {
   it('404 — non-integer id returns 404', async () => {
     const res = await request(app)
       .put('/api/v1/ratings/abc')
-      .set('Authorization', `Bearer ${makeToken(1)}`)
+      .set(authHeader(makeToken(1)))
       .send({ score: 9 });
 
     expect(res.status).toBe(404);
@@ -407,7 +446,7 @@ describe('DELETE /api/v1/ratings/:id', () => {
 
     const res = await request(app)
       .delete('/api/v1/ratings/1')
-      .set('Authorization', `Bearer ${makeToken(1)}`);
+      .set(authHeader(makeToken(1)));
 
     expect(res.status).toBe(204);
     expect(res.body).toEqual({});
@@ -434,7 +473,7 @@ describe('DELETE /api/v1/ratings/:id', () => {
 
     const res = await request(app)
       .delete('/api/v1/ratings/1')
-      .set('Authorization', `Bearer ${makeToken(1)}`);
+      .set(authHeader(makeToken(1)));
 
     expect(res.status).toBe(403);
     expect(res.body).toHaveProperty('error');
@@ -445,7 +484,7 @@ describe('DELETE /api/v1/ratings/:id', () => {
 
     const res = await request(app)
       .delete('/api/v1/ratings/9999')
-      .set('Authorization', `Bearer ${makeToken(1)}`);
+      .set(authHeader(makeToken(1)));
 
     expect(res.status).toBe(404);
     expect(res.body).toHaveProperty('error');
@@ -454,7 +493,7 @@ describe('DELETE /api/v1/ratings/:id', () => {
   it('404 — non-integer id returns 404', async () => {
     const res = await request(app)
       .delete('/api/v1/ratings/abc')
-      .set('Authorization', `Bearer ${makeToken(1)}`);
+      .set(authHeader(makeToken(1)));
 
     expect(res.status).toBe(404);
     expect(res.body).toHaveProperty('error');

@@ -1,6 +1,7 @@
 import { Prisma, MediaType } from '@prisma/client';
 import { Request, Response, NextFunction } from 'express';
 import { prisma } from '../../lib/prisma';
+import { resolveLocalUser } from '../../services/local-user';
 import { HttpError } from '../../errors/http-error';
 import { HTTP_STATUS } from '../../types/api';
 import { parseMediaTargetFilters, parsePaginationQuery } from '../../utils/request-parsing';
@@ -103,10 +104,11 @@ export const createReview = async (
     const mediaType = parseMediaTypeField(payload.mediaType);
     const title = parseOptionalTitleField(payload.title);
     const body = parseBodyField(payload.body);
+    const localUser = await resolveLocalUser(request);
 
     const review = await prisma.review.create({
       data: {
-        userId: request.user.sub,
+        userId: localUser.id,
         tmdbId,
         mediaType,
         title,
@@ -226,6 +228,7 @@ export const updateReview = async (
       return;
     }
 
+    await resolveLocalUser(request);
     assertOwner(request.user, existing.userId);
 
     const payload = request.body as ReviewUpdatePayload;
@@ -271,6 +274,7 @@ export const deleteReview = async (
       return;
     }
 
+    await resolveLocalUser(request);
     assertOwnerOrAdmin(request.user, existing.userId);
 
     await prisma.review.delete({ where: { id: reviewId } });

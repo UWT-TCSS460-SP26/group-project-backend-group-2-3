@@ -75,14 +75,14 @@ const mockTmdbServerError = () => {
 
 // ---------------------------------------------------------------------------
 // GET /movies/search
-// Spec: q required, page optional positive integer, default 1
+// Spec: title required, page optional positive integer, default 1
 // ---------------------------------------------------------------------------
 
 describe('GET /movies/search', () => {
-  it('200 — returns transformed list when q is provided', async () => {
+  it('200 — returns transformed list when title is provided', async () => {
     mockTmdbSuccess([tmdbMovieListItem]);
 
-    const res = await request(app).get('/movies/search?q=Fight+Club');
+    const res = await request(app).get('/movies/search?title=Fight+Club');
 
     // Spec says 200 with { page, totalPages, totalResults, results[] }
     expect(res.status).toBe(200);
@@ -92,7 +92,7 @@ describe('GET /movies/search', () => {
   it('200 — each result contains all required spec fields', async () => {
     mockTmdbSuccess([tmdbMovieListItem]);
 
-    const res = await request(app).get('/movies/search?q=Fight+Club');
+    const res = await request(app).get('/movies/search?title=Fight+Club');
 
     const item = res.body.results[0];
     // Spec requires: id, title, year, posterUrl, overview, mediaType
@@ -107,7 +107,7 @@ describe('GET /movies/search', () => {
   it('200 — mediaType is always "movie", never raw TMDB field names', async () => {
     mockTmdbSuccess([tmdbMovieListItem]);
 
-    const res = await request(app).get('/movies/search?q=Fight+Club');
+    const res = await request(app).get('/movies/search?title=Fight+Club');
 
     const item = res.body.results[0];
     // Spec says mediaType must be "movie" for movie results
@@ -121,7 +121,7 @@ describe('GET /movies/search', () => {
   it('200 — posterUrl is a full URL, not a raw TMDB path', async () => {
     mockTmdbSuccess([tmdbMovieListItem]);
 
-    const res = await request(app).get('/movies/search?q=Fight+Club');
+    const res = await request(app).get('/movies/search?title=Fight+Club');
 
     // Spec says posterUrl must be the full image URL, not just "/example.jpg"
     expect(res.body.results[0].posterUrl).toMatch(/^https:\/\/image\.tmdb\.org/);
@@ -130,28 +130,28 @@ describe('GET /movies/search', () => {
   it('200 — page 2 is accepted and passed through', async () => {
     mockTmdbSuccess([tmdbMovieListItem]);
 
-    const res = await request(app).get('/movies/search?q=Fight+Club&page=2');
+    const res = await request(app).get('/movies/search?title=Fight+Club&page=2');
 
     expect(res.status).toBe(200);
   });
 
-  it('400 — missing q returns error with message', async () => {
+  it('400 — missing title returns error with message', async () => {
     const res = await request(app).get('/movies/search');
 
-    // Spec: q is required — missing it must return 400
+    // Spec: title is required — missing it must return 400
     expect(res.status).toBe(400);
     expect(res.body).toHaveProperty('error');
   });
 
-  it('400 — empty q returns error', async () => {
-    const res = await request(app).get('/movies/search?q=');
+  it('400 — empty title returns error', async () => {
+    const res = await request(app).get('/movies/search?title=');
 
     expect(res.status).toBe(400);
     expect(res.body).toHaveProperty('error');
   });
 
   it('400 — non-integer page returns error', async () => {
-    const res = await request(app).get('/movies/search?q=Fight+Club&page=abc');
+    const res = await request(app).get('/movies/search?title=Fight+Club&page=abc');
 
     // Spec: page must be a positive integer
     expect(res.status).toBe(400);
@@ -159,14 +159,14 @@ describe('GET /movies/search', () => {
   });
 
   it('400 — page 0 returns error', async () => {
-    const res = await request(app).get('/movies/search?q=Fight+Club&page=0');
+    const res = await request(app).get('/movies/search?title=Fight+Club&page=0');
 
     expect(res.status).toBe(400);
     expect(res.body).toHaveProperty('error');
   });
 
   it('400 — negative page returns error', async () => {
-    const res = await request(app).get('/movies/search?q=Fight+Club&page=-1');
+    const res = await request(app).get('/movies/search?title=Fight+Club&page=-1');
 
     expect(res.status).toBe(400);
     expect(res.body).toHaveProperty('error');
@@ -175,7 +175,7 @@ describe('GET /movies/search', () => {
   it('502 — TMDB network failure returns upstream error', async () => {
     mockTmdbNetworkFailure();
 
-    const res = await request(app).get('/movies/search?q=Fight+Club');
+    const res = await request(app).get('/movies/search?title=Fight+Club');
 
     // Spec: upstream failure must return 502
     expect(res.status).toBe(502);
@@ -185,7 +185,7 @@ describe('GET /movies/search', () => {
   it('502 — TMDB server error returns upstream error', async () => {
     mockTmdbServerError();
 
-    const res = await request(app).get('/movies/search?q=Fight+Club');
+    const res = await request(app).get('/movies/search?title=Fight+Club');
 
     expect(res.status).toBe(502);
     expect(res.body).toHaveProperty('error');
