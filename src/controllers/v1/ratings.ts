@@ -1,6 +1,7 @@
 import { MediaType, Prisma } from '@prisma/client';
 import { Request, Response, NextFunction } from 'express';
 import { prisma } from '../../lib/prisma';
+import { resolveLocalUser } from '../../services/local-user';
 import { HttpError } from '../../errors/http-error';
 import { HTTP_STATUS } from '../../types/api';
 import { parseMediaTargetFilters, parsePaginationQuery } from '../../utils/request-parsing';
@@ -79,10 +80,11 @@ export const createRating = async (
     );
     const mediaType = parseMediaTypeField(payload.mediaType);
     const score = parseScoreField(payload.score);
+    const localUser = await resolveLocalUser(request);
 
     const rating = await prisma.rating.create({
       data: {
-        userId: request.user.sub,
+        userId: localUser.id,
         tmdbId,
         mediaType,
         score,
@@ -156,6 +158,7 @@ export const updateRating = async (
       return;
     }
 
+    await resolveLocalUser(request);
     assertOwner(request.user, existing.userId);
 
     const payload = request.body as RatingUpdatePayload;
@@ -200,6 +203,7 @@ export const deleteRating = async (
       return;
     }
 
+    await resolveLocalUser(request);
     assertOwner(request.user, existing.userId);
 
     await prisma.rating.delete({ where: { id: ratingId } });

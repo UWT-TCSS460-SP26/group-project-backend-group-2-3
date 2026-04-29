@@ -19,6 +19,11 @@ jest.mock('../src/lib/prisma', () => ({
       count: jest.fn(),
       findMany: jest.fn(),
     },
+    user: {
+      findUnique: jest.fn(),
+      update: jest.fn(),
+      create: jest.fn(),
+    },
     $transaction: jest.fn(),
   },
 }));
@@ -28,6 +33,7 @@ const mockFindUnique = prisma.rating.findUnique as jest.Mock;
 const mockUpdate = prisma.rating.update as jest.Mock;
 const mockDelete = prisma.rating.delete as jest.Mock;
 const mockTransaction = prisma.$transaction as jest.Mock;
+const mockUserFindUnique = prisma.user.findUnique as jest.Mock;
 
 // ---------------------------------------------------------------------------
 // Test auth helper — bypasses real Auth2/JWKS verification in Jest
@@ -38,6 +44,23 @@ const makeToken = (userId = 1, role: UserRole = USER_ROLES.user) =>
 beforeEach(() => {
   jest.resetAllMocks();
   process.env.TMDB_API_KEY = 'test-api-key';
+  mockUserFindUnique.mockImplementation(({ where }: { where: { subjectId?: string } }) => {
+    if (!where.subjectId) {
+      return Promise.resolve(null);
+    }
+
+    return Promise.resolve({
+      id: 1,
+      subjectId: where.subjectId,
+      username: 'local-user',
+      email: 'local-user@example.test',
+      firstName: null,
+      lastName: null,
+      role: 'user',
+      createdAt: new Date('2026-01-01T00:00:00.000Z'),
+      updatedAt: new Date('2026-01-01T00:00:00.000Z'),
+    });
+  });
 });
 
 // ---------------------------------------------------------------------------
@@ -65,6 +88,7 @@ describe('GET /api/v1/ratings', () => {
       totalResults: 1,
       results: [expectedRating],
     });
+    expect(mockUserFindUnique).not.toHaveBeenCalled();
   });
 
   it('200 — returns empty results when no ratings exist', async () => {
@@ -140,14 +164,30 @@ describe('GET /api/v1/ratings', () => {
 describe('POST /api/v1/ratings', () => {
   it('201 — creates rating and returns transformed response', async () => {
     mockCreate.mockResolvedValue(mockRatingRow);
+    mockUserFindUnique.mockResolvedValueOnce({
+      id: 42,
+      subjectId: 'auth2|test-user-999',
+      username: 'mapped-user',
+      email: 'mapped-user@example.test',
+      firstName: null,
+      lastName: null,
+      role: 'user',
+      createdAt: new Date('2026-01-01T00:00:00.000Z'),
+      updatedAt: new Date('2026-01-01T00:00:00.000Z'),
+    });
 
     const res = await request(app)
       .post('/api/v1/ratings')
-      .set(authHeader(makeToken(1)))
+      .set(authHeader(makeToken(999)))
       .send({ tmdbId: 550, mediaType: 'movie', score: 8 });
 
     expect(res.status).toBe(201);
     expect(res.body).toEqual(expectedRating);
+    expect(mockCreate).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.objectContaining({ userId: 42 }),
+      })
+    );
   });
 
   it('400 — missing tmdbId returns error', async () => {

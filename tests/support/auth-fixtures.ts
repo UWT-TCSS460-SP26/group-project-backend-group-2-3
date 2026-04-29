@@ -42,6 +42,7 @@ export const createAccessToken = (overrides: Partial<AuthenticatedUser> = {}): s
 };
 
 export const authHeader = (token: string): Record<string, string> => ({
+  Authorization: `Bearer ${token}`,
   [TEST_AUTH_HEADER]: token,
 });
 

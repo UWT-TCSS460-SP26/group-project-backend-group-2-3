@@ -20,6 +20,9 @@ const adminIdentity = {
   username: 'reviews-int-admin',
   email: 'reviews-int-admin@example.test',
 };
+const ownerSubjectId = 'auth2|reviews-owner';
+const otherSubjectId = 'auth2|reviews-other';
+const adminSubjectId = 'auth2|reviews-admin';
 const testTmdbIds = [...USER_CONTENT_TEST_TMDB_IDS];
 
 let ownerToken = '';
@@ -48,18 +51,21 @@ describe('reviews routes', () => {
     await cleanupTestData();
     const ownerUser = await prisma.user.create({
       data: {
+        subjectId: ownerSubjectId,
         username: ownerIdentity.username,
         email: ownerIdentity.email,
       },
     });
     const otherUser = await prisma.user.create({
       data: {
+        subjectId: otherSubjectId,
         username: otherIdentity.username,
         email: otherIdentity.email,
       },
     });
     const adminUser = await prisma.user.create({
       data: {
+        subjectId: adminSubjectId,
         username: adminIdentity.username,
         email: adminIdentity.email,
         role: 'admin',
@@ -67,19 +73,19 @@ describe('reviews routes', () => {
     });
     ownerToken = createAccessToken({
       sub: ownerUser.id,
-      subjectId: 'auth2|reviews-owner',
+      subjectId: ownerSubjectId,
       email: ownerUser.email,
       role: USER_ROLES.user,
     });
     otherToken = createAccessToken({
       sub: otherUser.id,
-      subjectId: 'auth2|reviews-other',
+      subjectId: otherSubjectId,
       email: otherUser.email,
       role: USER_ROLES.user,
     });
     adminToken = createAccessToken({
       sub: adminUser.id,
-      subjectId: 'auth2|reviews-admin',
+      subjectId: adminSubjectId,
       email: adminUser.email,
       role: USER_ROLES.admin,
     });

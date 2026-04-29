@@ -11,6 +11,13 @@ enum UserRole {
   admin
 }
 
+enum IssueStatus {
+  open
+  in_progress
+  resolved
+  closed
+}
+
 enum MediaType {
   movie
   show
@@ -18,14 +25,30 @@ enum MediaType {
 
 model User {
   id        Int      @id @default(autoincrement())
+  subjectId String   @unique
   username  String   @unique
   email     String   @unique
+  firstName String?
+  lastName  String?
   role      UserRole @default(user)
   createdAt DateTime @default(now())
   updatedAt DateTime @default(now()) @updatedAt
 
   ratings Rating[]
   reviews Review[]
+}
+
+model Issue {
+  id                Int         @id @default(autoincrement())
+  title             String
+  description       String
+  reproductionSteps String?
+  reporterContact   String?
+  status            IssueStatus @default(open)
+  createdAt         DateTime    @default(now())
+  updatedAt         DateTime    @default(now()) @updatedAt
+
+  @@index([status, createdAt])
 }
 
 model Rating {

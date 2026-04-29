@@ -39,6 +39,10 @@ npx prisma db seed
 The seed is idempotent. It guarantees an admin account with username `admin` and email
 `admin@dev.local`.
 
+The Sprint 3 migration backfills existing local Sprint 2 users with `legacy-user-<id>` subject IDs,
+then new authenticated writes link Auth2 subjects to local numeric `User.id` rows. Teammates should
+not need to reset local dev data unless they have manual duplicate usernames or emails.
+
 When the Prisma schema changes, run `npx prisma migrate dev --name <short-change-name>` and commit
 the updated `prisma/schema.prisma` plus the generated `prisma/migrations/...` folder. When seed data
 changes, update `prisma/seed.ts` and rerun `npx prisma db seed`; the seed script should remain safe
