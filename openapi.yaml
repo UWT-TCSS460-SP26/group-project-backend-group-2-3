@@ -16,7 +16,7 @@ tags:
   - name: Health
     description: Service health checks
   - name: Auth
-    description: Development auth routes and JWT usage
+    description: Auth2 bearer token usage
   - name: Movies
     description: Movie routes proxied from TMDB
   - name: Shows
@@ -49,64 +49,6 @@ paths:
                   service:
                     type: string
                     example: group-project-backend-group-2-3
-
-  /auth/dev-login:
-    post:
-      tags: [Auth]
-      summary: Dev login and JWT minting
-      description: |
-        Development-only login that upserts a user and returns a bearer token for protected mutation routes.
-        This route does not validate passwords and should not be exposed publicly.
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/DevLoginRequest'
-            examples:
-              regularUser:
-                value:
-                  username: alice
-                  email: alice@example.test
-              seededAdmin:
-                value:
-                  username: admin
-      responses:
-        '200':
-          description: JWT and user payload
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/DevLoginResponse'
-              examples:
-                success:
-                  value:
-                    token: <jwt>
-                    user:
-                      id: 1
-                      username: alice
-                      email: alice@example.test
-                      role: user
-        '400':
-          description: Missing required username
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ApiErrorResponse'
-              examples:
-                missingUsername:
-                  value:
-                    error: username is required
-        '500':
-          description: JWT configuration error
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ApiErrorResponse'
-              examples:
-                missingSecret:
-                  value:
-                    error: JWT_SECRET is not configured
 
   /api/v1/movies/search:
     get:
@@ -1869,54 +1811,3 @@ components:
           minimum: 1
           maximum: 10
           example: 9
-
-    DevLoginRequest:
-      type: object
-      required:
-        - username
-      properties:
-        username:
-          type: string
-          minLength: 1
-          example: alice
-        email:
-          type: string
-          format: email
-          nullable: true
-          example: alice@example.test
-
-    AuthUser:
-      type: object
-      required:
-        - id
-        - username
-        - email
-        - role
-      properties:
-        id:
-          type: integer
-          example: 1
-        username:
-          type: string
-          example: alice
-        email:
-          type: string
-          format: email
-          example: alice@example.test
-        role:
-          type: string
-          enum: [user, admin]
-          example: user
-
-    DevLoginResponse:
-      type: object
-      required:
-        - token
-        - user
-      properties:
-        token:
-          type: string
-          description: JWT bearer token. Send as Authorization Bearer token for protected mutation routes.
-          example: <jwt>
-        user:
-          $ref: '#/components/schemas/AuthUser'

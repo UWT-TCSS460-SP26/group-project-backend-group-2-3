@@ -5,6 +5,7 @@ import { assertOwner, assertOwnerOrAdmin } from '../src/utils/authorization';
 
 const user = (overrides: Partial<AuthenticatedUser> = {}): AuthenticatedUser => ({
   sub: 1,
+  subjectId: 'auth2|user-1',
   email: 'user@example.test',
   role: USER_ROLES.user,
   ...overrides,
@@ -30,6 +31,12 @@ describe('authorization helpers', () => {
     const admin = user({ role: USER_ROLES.admin });
 
     expect(assertOwnerOrAdmin(admin, 2)).toEqual(admin);
+  });
+
+  it('allows SuperAdmin through admin-level owner-or-admin checks', () => {
+    const superAdmin = user({ role: USER_ROLES.superAdmin });
+
+    expect(assertOwnerOrAdmin(superAdmin, 2)).toEqual(superAdmin);
   });
 
   it('rejects missing users with 401', () => {
