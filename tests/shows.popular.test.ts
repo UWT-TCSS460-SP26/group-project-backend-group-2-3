@@ -28,7 +28,7 @@ const makeTmdbPopularResponse = (overrides = {}) => ({
   ...overrides,
 });
 
-describe('GET /shows/popular', () => {
+describe('GET /tv-shows/popular', () => {
   beforeAll(() => {
     process.env.TMDB_API_KEY = 'test-api-key';
   });
@@ -41,7 +41,7 @@ describe('GET /shows/popular', () => {
     it('returns shaped results when page is valid', async () => {
       mockedTmdbClient.getPopularShows.mockResolvedValueOnce(makeTmdbPopularResponse());
 
-      const response = await request(app).get('/shows/popular').query({ page: '1' });
+      const response = await request(app).get('/tv-shows/popular').query({ page: '1' });
 
       expect(response.status).toBe(200);
       expect(mockedTmdbClient.getPopularShows).toHaveBeenCalledWith(1);
@@ -66,7 +66,7 @@ describe('GET /shows/popular', () => {
     it('works without an explicit page param and defaults to page 1', async () => {
       mockedTmdbClient.getPopularShows.mockResolvedValueOnce(makeTmdbPopularResponse());
 
-      const response = await request(app).get('/shows/popular');
+      const response = await request(app).get('/tv-shows/popular');
 
       expect(response.status).toBe(200);
       expect(mockedTmdbClient.getPopularShows).toHaveBeenCalledWith(1);
@@ -76,7 +76,7 @@ describe('GET /shows/popular', () => {
 
   describe('400 - invalid query parameters', () => {
     it.each(['0', '-1', 'abc', '1.5'])('returns 400 when page is invalid: %s', async (page) => {
-      const response = await request(app).get('/shows/popular').query({ page });
+      const response = await request(app).get('/tv-shows/popular').query({ page });
 
       expect(response.status).toBe(400);
       expect(response.body).toEqual({ error: 'page must be a positive integer' });
@@ -88,7 +88,7 @@ describe('GET /shows/popular', () => {
     it('returns 502 when the TMDB client throws an upstream HttpError', async () => {
       mockedTmdbClient.getPopularShows.mockRejectedValueOnce(new HttpError(502, 'Invalid API key'));
 
-      const response = await request(app).get('/shows/popular').query({ page: '1' });
+      const response = await request(app).get('/tv-shows/popular').query({ page: '1' });
 
       expect(response.status).toBe(502);
       expect(response.body).toEqual({ error: 'Invalid API key' });
@@ -97,7 +97,7 @@ describe('GET /shows/popular', () => {
     it('returns 502 when the TMDB client throws an unexpected error', async () => {
       mockedTmdbClient.getPopularShows.mockRejectedValueOnce(new Error('connect ECONNREFUSED'));
 
-      const response = await request(app).get('/shows/popular').query({ page: '1' });
+      const response = await request(app).get('/tv-shows/popular').query({ page: '1' });
 
       expect(response.status).toBe(502);
       expect(response.body).toEqual({ error: 'Internal server error' });

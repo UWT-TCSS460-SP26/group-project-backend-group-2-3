@@ -13,7 +13,7 @@ jest.mock('../src/services/tmdb-client', () => ({
 
 const mockedTmdbClient = tmdbClient as jest.Mocked<typeof tmdbClient>;
 
-describe('V2 TV Shows Routes', () => {
+describe('V1 TV Shows Routes', () => {
   beforeAll(() => {
     process.env.TMDB_API_KEY = process.env.TMDB_API_KEY ?? 'test-tmdb-api-key';
   });
@@ -22,7 +22,7 @@ describe('V2 TV Shows Routes', () => {
     jest.clearAllMocks();
   });
 
-  it('GET /v2/tv-shows/search returns transformed results (200)', async () => {
+  it('GET /v1/tv-shows/search returns transformed results (200)', async () => {
     mockedTmdbClient.searchShows.mockResolvedValueOnce({
       page: 1,
       total_pages: 2,
@@ -39,7 +39,7 @@ describe('V2 TV Shows Routes', () => {
     });
 
     const response = await request(app)
-      .get('/v2/tv-shows/search')
+      .get('/v1/tv-shows/search')
       .query({ title: 'lost', page: '1' });
 
     expect(response.status).toBe(200);
@@ -54,15 +54,15 @@ describe('V2 TV Shows Routes', () => {
     });
   });
 
-  it('GET /v2/tv-shows/popular validates page query (400)', async () => {
-    const response = await request(app).get('/v2/tv-shows/popular').query({ page: 'abc' });
+  it('GET /v1/tv-shows/popular validates page query (400)', async () => {
+    const response = await request(app).get('/v1/tv-shows/popular').query({ page: 'abc' });
 
     expect(response.status).toBe(400);
     expect(response.body).toEqual({ error: 'page must be a positive integer' });
     expect(mockedTmdbClient.getPopularShows).not.toHaveBeenCalled();
   });
 
-  it('GET /v2/tv-shows/:id returns show details (200)', async () => {
+  it('GET /v1/tv-shows/:id returns show details (200)', async () => {
     mockedTmdbClient.getShowDetails.mockResolvedValueOnce({
       backdrop_path: '/backdrop.jpg',
       first_air_date: '2008-01-20',
@@ -77,7 +77,7 @@ describe('V2 TV Shows Routes', () => {
       vote_average: 8.9,
     });
 
-    const response = await request(app).get('/v2/tv-shows/1396');
+    const response = await request(app).get('/v1/tv-shows/1396');
 
     expect(response.status).toBe(200);
     expect(response.body).toEqual({
@@ -96,29 +96,29 @@ describe('V2 TV Shows Routes', () => {
     expect(mockedTmdbClient.getShowDetails).toHaveBeenCalledWith(1396);
   });
 
-  it('GET /api/v2/tv-shows/:id uses the same handler (404 invalid id)', async () => {
-    const response = await request(app).get('/api/v2/tv-shows/abc');
+  it('GET /api/v1/tv-shows/:id uses the same handler (404 invalid id)', async () => {
+    const response = await request(app).get('/api/v1/tv-shows/abc');
 
     expect(response.status).toBe(404);
     expect(response.body).toEqual({ error: 'Show not found' });
     expect(mockedTmdbClient.getShowDetails).not.toHaveBeenCalled();
   });
 
-  it('GET /v2/tv-shows/:id returns upstream 404 from TMDB', async () => {
+  it('GET /v1/tv-shows/:id returns upstream 404 from TMDB', async () => {
     mockedTmdbClient.getShowDetails.mockRejectedValueOnce(
       new HttpError(404, 'The resource you requested could not be found.')
     );
 
-    const response = await request(app).get('/v2/tv-shows/999999');
+    const response = await request(app).get('/v1/tv-shows/999999');
 
     expect(response.status).toBe(404);
     expect(response.body).toEqual({ error: 'The resource you requested could not be found.' });
   });
 
-  it('GET /v2/tv-shows/:id returns 502 for non-HTTP errors', async () => {
+  it('GET /v1/tv-shows/:id returns 502 for non-HTTP errors', async () => {
     mockedTmdbClient.getShowDetails.mockRejectedValueOnce(new Error('fetch failed'));
 
-    const response = await request(app).get('/v2/tv-shows/1396');
+    const response = await request(app).get('/v1/tv-shows/1396');
 
     expect(response.status).toBe(502);
     expect(response.body).toEqual({ error: 'TMDB request failed' });

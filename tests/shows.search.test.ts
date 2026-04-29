@@ -28,7 +28,7 @@ const makeTmdbSearchResponse = (overrides = {}) => ({
   ...overrides,
 });
 
-describe('GET /shows/search', () => {
+describe('GET /tv-shows/search', () => {
   beforeAll(() => {
     process.env.TMDB_API_KEY = 'test-api-key';
   });
@@ -38,10 +38,12 @@ describe('GET /shows/search', () => {
   });
 
   describe('200 - successful search', () => {
-    it('returns shaped results when q and page are valid', async () => {
+    it('returns shaped results when title and page are valid', async () => {
       mockedTmdbClient.searchShows.mockResolvedValueOnce(makeTmdbSearchResponse());
 
-      const response = await request(app).get('/shows/search').query({ q: 'lost', page: '1' });
+      const response = await request(app)
+        .get('/tv-shows/search')
+        .query({ title: 'lost', page: '1' });
 
       expect(response.status).toBe(200);
       expect(mockedTmdbClient.searchShows).toHaveBeenCalledWith('lost', 1);
@@ -66,7 +68,7 @@ describe('GET /shows/search', () => {
     it('works without an explicit page param and defaults to page 1', async () => {
       mockedTmdbClient.searchShows.mockResolvedValueOnce(makeTmdbSearchResponse());
 
-      const response = await request(app).get('/shows/search').query({ q: 'lost' });
+      const response = await request(app).get('/tv-shows/search').query({ title: 'lost' });
 
       expect(response.status).toBe(200);
       expect(mockedTmdbClient.searchShows).toHaveBeenCalledWith('lost', 1);
@@ -75,24 +77,24 @@ describe('GET /shows/search', () => {
   });
 
   describe('400 - invalid query parameters', () => {
-    it('returns 400 when q is omitted', async () => {
-      const response = await request(app).get('/shows/search').query({ page: '1' });
+    it('returns 400 when title is omitted', async () => {
+      const response = await request(app).get('/tv-shows/search').query({ page: '1' });
 
       expect(response.status).toBe(400);
-      expect(response.body).toEqual({ error: 'q is required' });
+      expect(response.body).toEqual({ error: 'title is required' });
       expect(mockedTmdbClient.searchShows).not.toHaveBeenCalled();
     });
 
-    it('returns 400 when q is empty', async () => {
-      const response = await request(app).get('/shows/search').query({ q: '', page: '1' });
+    it('returns 400 when title is empty', async () => {
+      const response = await request(app).get('/tv-shows/search').query({ title: '', page: '1' });
 
       expect(response.status).toBe(400);
-      expect(response.body).toEqual({ error: 'q is required' });
+      expect(response.body).toEqual({ error: 'title is required' });
       expect(mockedTmdbClient.searchShows).not.toHaveBeenCalled();
     });
 
     it.each(['0', '-1', 'abc', '1.5'])('returns 400 when page is invalid: %s', async (page) => {
-      const response = await request(app).get('/shows/search').query({ q: 'lost', page });
+      const response = await request(app).get('/tv-shows/search').query({ title: 'lost', page });
 
       expect(response.status).toBe(400);
       expect(response.body).toEqual({ error: 'page must be a positive integer' });
@@ -104,7 +106,9 @@ describe('GET /shows/search', () => {
     it('returns 502 when the TMDB client throws an upstream HttpError', async () => {
       mockedTmdbClient.searchShows.mockRejectedValueOnce(new HttpError(502, 'Invalid API key'));
 
-      const response = await request(app).get('/shows/search').query({ q: 'lost', page: '1' });
+      const response = await request(app)
+        .get('/tv-shows/search')
+        .query({ title: 'lost', page: '1' });
 
       expect(response.status).toBe(502);
       expect(response.body).toEqual({ error: 'Invalid API key' });
@@ -113,7 +117,9 @@ describe('GET /shows/search', () => {
     it('returns 502 when the TMDB client throws an unexpected error', async () => {
       mockedTmdbClient.searchShows.mockRejectedValueOnce(new Error('connect ECONNREFUSED'));
 
-      const response = await request(app).get('/shows/search').query({ q: 'lost', page: '1' });
+      const response = await request(app)
+        .get('/tv-shows/search')
+        .query({ title: 'lost', page: '1' });
 
       expect(response.status).toBe(502);
       expect(response.body).toEqual({ error: 'Internal server error' });
