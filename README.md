@@ -6,8 +6,8 @@ Express and TypeScript API for the Movie and TV Review Platform group project.
 
 - Heartbeat: `GET /health`
 - API docs: `GET /api-docs`
-- Versioned API base routes: `GET /v1/*`, `GET /v2/*`
-- Backward-compatible aliases: `GET /api/v1/*`, `GET /api/v2/*`, and unversioned `/*` (v1)
+- Versioned API base routes: `GET /v1/*`
+- Backward-compatible aliases: `GET /api/v1/*` and unversioned `/*` (v1)
 
 Local docs are available at [http://localhost:3000/api-docs](http://localhost:3000/api-docs).
 
@@ -52,11 +52,13 @@ to run more than once on a teammate's local database.
 
 ## Route and Controller Layout
 
-The project now follows the checkoff-style versioned structure:
+The project now uses v1 as the single active API surface:
 
-- `src/routes/v1/index.ts` and `src/routes/v2/index.ts` mount each version's routes
-- `src/routes/v1/*.ts` and `src/routes/v2/*.ts` define endpoints for each version
-- `src/controllers/v1/*.ts` and `src/controllers/v2/*.ts` are used where handlers are split from routes
+- `src/routes/v1/index.ts` mounts the active route families.
+- `src/routes/v1/*.ts` defines endpoints for each route family.
+- `src/controllers/v1/*.ts` is used where handlers are split from routes.
+- Movie search uses `GET /v1/movies/search?title=...`.
+- TV-show routes use `/v1/tv-shows`.
 
 ## Shared Contracts
 
