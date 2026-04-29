@@ -6,6 +6,7 @@ import { apiReference } from '@scalar/express-api-reference';
 import { v1Router } from './routes/v1';
 import { v2Router } from './routes/v2';
 import { errorHandler } from './middleware/error-handler';
+import devAuthRouter from './routes/devAuth';
 
 const app = express();
 
@@ -37,6 +38,9 @@ app.use('/v2', v2Router);
 app.use('/api/v1', v1Router);
 app.use('/api/v2', v2Router);
 app.use('/', v1Router);
+
+// Dev-only auth (Sprint 2) — remove before production
+app.use('/auth', devAuthRouter);
 
 // 404 handler — must be after all routes
 app.use((_request: Request, response: Response) => {
