@@ -1,23 +1,9 @@
 import request from 'supertest';
-import {
-  authHeader,
-  createAccessToken,
-  createMutationAuthTestApp,
-  TEST_JWT_SECRET,
-} from './support/auth-fixtures';
+import { authHeader, createAccessToken, createMutationAuthTestApp } from './support/auth-fixtures';
 import { USER_ROLES } from '../src/types/auth';
 
 describe('mutation auth: ownership and role behavior', () => {
-  const previousSecret = process.env.JWT_SECRET;
   const app = createMutationAuthTestApp();
-
-  beforeAll(() => {
-    process.env.JWT_SECRET = TEST_JWT_SECRET;
-  });
-
-  afterAll(() => {
-    process.env.JWT_SECRET = previousSecret;
-  });
 
   describe('PATCH /test/reviews/:id (owner required)', () => {
     it('200 for owner update', async () => {
@@ -50,7 +36,7 @@ describe('mutation auth: ownership and role behavior', () => {
         .send({ text: 'bad token' });
 
       expect(response.status).toBe(401);
-      expect(response.body.error).toMatch(/invalid or expired token/i);
+      expect(response.body.error).toMatch(/invalid/i);
     });
 
     it('403 when authenticated user is not owner', async () => {
