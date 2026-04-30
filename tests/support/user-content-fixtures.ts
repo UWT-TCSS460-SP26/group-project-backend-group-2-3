@@ -53,7 +53,6 @@ export const buildRatingResponse = (overrides: RatingRecordOverrides = {}): Rati
 
   return {
     id: record.id,
-    tmdbId: record.tmdbId,
     mediaType: record.mediaType,
     score: record.score,
     createdAt: record.createdAt.toISOString(),
@@ -84,7 +83,6 @@ export const buildReviewResponse = (overrides: ReviewRecordOverrides = {}): Revi
 
   return {
     id: record.id,
-    tmdbId: record.tmdbId,
     mediaType: record.mediaType,
     title: record.title,
     body: record.body,

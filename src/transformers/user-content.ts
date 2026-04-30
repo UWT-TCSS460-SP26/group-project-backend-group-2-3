@@ -30,7 +30,6 @@ export interface ReviewRecordWithAuthor extends UserContentRecordBase {
 
 export interface RatingResponse {
   id: number;
-  tmdbId: number;
   mediaType: MediaType;
   score: number;
   createdAt: string;
@@ -40,7 +39,6 @@ export interface RatingResponse {
 
 export interface ReviewResponse {
   id: number;
-  tmdbId: number;
   mediaType: MediaType;
   title: string | null;
   body: string;
@@ -82,7 +80,6 @@ export const toUserContentAuthorResponse = (
 
 export const toRatingResponse = (rating: RatingRecordWithAuthor): RatingResponse => ({
   id: rating.id,
-  tmdbId: rating.tmdbId,
   mediaType: rating.mediaType,
   score: rating.score,
   createdAt: rating.createdAt.toISOString(),
@@ -92,7 +89,6 @@ export const toRatingResponse = (rating: RatingRecordWithAuthor): RatingResponse
 
 export const toReviewResponse = (review: ReviewRecordWithAuthor): ReviewResponse => ({
   id: review.id,
-  tmdbId: review.tmdbId,
   mediaType: review.mediaType,
   title: review.title,
   body: review.body,

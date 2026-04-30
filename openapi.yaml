@@ -496,7 +496,6 @@ paths:
                     totalResults: 1
                     results:
                       - id: 101
-                        tmdbId: 550
                         mediaType: movie
                         title: Great watch
                         body: This movie stayed sharp, focused, and worth revisiting.
@@ -548,7 +547,6 @@ paths:
                 success:
                   value:
                     id: 101
-                    tmdbId: 550
                     mediaType: movie
                     title: Great watch
                     body: This movie stayed sharp, focused, and worth revisiting.
@@ -608,7 +606,6 @@ paths:
                 success:
                   value:
                     id: 101
-                    tmdbId: 550
                     mediaType: movie
                     title: Great watch
                     body: This movie stayed sharp, focused, and worth revisiting.
@@ -717,387 +714,6 @@ paths:
                   value:
                     error: Review not found
 
-  /api/v2/movies/search:
-    get:
-      tags: [Movies]
-      summary: Search movies by title
-      description: Searches TMDB for movies and returns a transformed paginated list.
-      parameters:
-        - in: query
-          name: title
-          required: true
-          description: Movie title query.
-          schema:
-            type: string
-            minLength: 1
-          example: Fight Club
-        - in: query
-          name: page
-          required: false
-          description: Positive integer page number. Defaults to 1.
-          schema:
-            type: integer
-            minimum: 1
-            default: 1
-          example: 1
-      responses:
-        '200':
-          description: Paginated list of matching movies
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/MediaListResponse'
-              examples:
-                success:
-                  value:
-                    page: 1
-                    totalPages: 5
-                    totalResults: 92
-                    results:
-                      - id: 550
-                        title: Fight Club
-                        year: 1999
-                        posterUrl: https://image.tmdb.org/t/p/w500/example.jpg
-                        overview: An insomniac office worker crosses paths with a soap maker.
-                        mediaType: movie
-        '400':
-          description: Missing or invalid query parameters
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ApiErrorResponse'
-              examples:
-                missingTitle:
-                  value:
-                    error: Query parameter title is required
-                invalidPage:
-                  value:
-                    error: Query parameter page must be a positive integer
-        '502':
-          description: TMDB upstream failure
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ApiErrorResponse'
-              examples:
-                upstreamFailure:
-                  value:
-                    error: TMDB request failed with status 500
-                genericFailure:
-                  value:
-                    error: Internal server error
-
-  /api/v2/movies/popular:
-    get:
-      tags: [Movies]
-      summary: Get popular movies
-      description: Returns popular TMDB movies as a transformed paginated list.
-      parameters:
-        - in: query
-          name: page
-          required: false
-          description: Positive integer page number. Defaults to 1.
-          schema:
-            type: integer
-            minimum: 1
-            default: 1
-          example: 1
-      responses:
-        '200':
-          description: Paginated list of popular movies
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/MediaListResponse'
-              examples:
-                success:
-                  value:
-                    page: 1
-                    totalPages: 500
-                    totalResults: 10000
-                    results:
-                      - id: 550
-                        title: Fight Club
-                        year: 1999
-                        posterUrl: https://image.tmdb.org/t/p/w500/example.jpg
-                        overview: An insomniac office worker crosses paths with a soap maker.
-                        mediaType: movie
-        '400':
-          description: Invalid page parameter
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ApiErrorResponse'
-              examples:
-                invalidPage:
-                  value:
-                    error: Query parameter page must be a positive integer
-        '502':
-          description: TMDB upstream failure
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ApiErrorResponse'
-              examples:
-                upstreamFailure:
-                  value:
-                    error: TMDB request failed with status 500
-                genericFailure:
-                  value:
-                    error: Internal server error
-
-  /api/v2/movies/{id}:
-    get:
-      tags: [Movies]
-      summary: Get movie details by id
-      description: Returns transformed details for a single movie.
-      parameters:
-        - in: path
-          name: id
-          required: true
-          description: Positive movie id.
-          schema:
-            type: integer
-            minimum: 1
-          example: 550
-      responses:
-        '200':
-          description: Movie details
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/MovieDetailResponse'
-              examples:
-                success:
-                  value:
-                    id: 550
-                    title: Fight Club
-                    year: 1999
-                    posterUrl: https://image.tmdb.org/t/p/w500/poster.jpg
-                    backdropUrl: https://image.tmdb.org/t/p/w780/backdrop.jpg
-                    overview: An insomniac office worker crosses paths with a soap maker.
-                    genres: [Drama]
-                    runtimeMinutes: 139
-                    status: Released
-                    rating: 8.4
-        '404':
-          description: Movie not found or invalid movie ID
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ApiErrorResponse'
-              examples:
-                invalidId:
-                  value:
-                    error: Movie not found
-                notFound:
-                  value:
-                    error: The resource you requested could not be found.
-        '502':
-          description: Upstream TMDB request failure
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ApiErrorResponse'
-              examples:
-                upstreamError:
-                  value:
-                    error: TMDB request failed with status 500
-                genericFailure:
-                  value:
-                    error: Internal server error
-
-  /api/v2/tv-shows/search:
-    get:
-      tags: [Shows]
-      summary: Search shows by title
-      description: Searches TMDB TV shows and returns a transformed paginated list.
-      parameters:
-        - in: query
-          name: title
-          required: true
-          description: Show title query.
-          schema:
-            type: string
-            minLength: 1
-          example: lost
-        - in: query
-          name: page
-          required: false
-          description: Positive integer page number. Defaults to 1.
-          schema:
-            type: integer
-            minimum: 1
-            default: 1
-          example: 1
-      responses:
-        '200':
-          description: Paginated list of matching shows
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/MediaListResponse'
-              examples:
-                success:
-                  value:
-                    page: 1
-                    totalPages: 2
-                    totalResults: 40
-                    results:
-                      - id: 4607
-                        title: Lost
-                        year: 2004
-                        posterUrl: https://image.tmdb.org/t/p/w500/ogbwjg3we0UppYjVJwVH15BReqA.jpg
-                        overview: The survivors of a plane crash are forced to work together in order to survive on a seemingly deserted tropical island.
-                        mediaType: show
-        '400':
-          description: Missing or invalid query parameters
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ApiErrorResponse'
-              examples:
-                missingTitle:
-                  value:
-                    error: title is required
-                invalidPage:
-                  value:
-                    error: page must be a positive integer
-        '502':
-          description: TMDB upstream failure
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ApiErrorResponse'
-              examples:
-                upstreamFailure:
-                  value:
-                    error: Invalid API key
-                genericFailure:
-                  value:
-                    error: Internal server error
-
-  /api/v2/tv-shows/popular:
-    get:
-      tags: [Shows]
-      summary: Get popular shows
-      description: Returns popular TMDB TV shows as a transformed paginated list.
-      parameters:
-        - in: query
-          name: page
-          required: false
-          description: Positive integer page number. Defaults to 1.
-          schema:
-            type: integer
-            minimum: 1
-            default: 1
-          example: 1
-      responses:
-        '200':
-          description: Paginated list of popular shows
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/MediaListResponse'
-              examples:
-                success:
-                  value:
-                    page: 1
-                    totalPages: 1000
-                    totalResults: 20000
-                    results:
-                      - id: 95557
-                        title: Invincible
-                        year: 2021
-                        posterUrl: https://image.tmdb.org/t/p/w500/yDWJYRAwMNKbIYT8ZB33qy84uzO.jpg
-                        overview: An adult animated series based on the Skybound/Image comic about a teenager whose father is the most powerful superhero on the planet.
-                        mediaType: show
-        '400':
-          description: Invalid page parameter
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ApiErrorResponse'
-              examples:
-                invalidPage:
-                  value:
-                    error: page must be a positive integer
-        '502':
-          description: TMDB upstream failure
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ApiErrorResponse'
-              examples:
-                upstreamFailure:
-                  value:
-                    error: Invalid API key
-                genericFailure:
-                  value:
-                    error: Internal server error
-
-  /api/v2/tv-shows/{id}:
-    get:
-      tags: [Shows]
-      summary: Get show details by id
-      description: Returns transformed details for a single TV show.
-      parameters:
-        - in: path
-          name: id
-          required: true
-          description: Positive show id.
-          schema:
-            type: integer
-            minimum: 1
-          example: 1396
-      responses:
-        '200':
-          description: Show details
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ShowDetailResponse'
-              examples:
-                success:
-                  value:
-                    id: 1396
-                    title: Breaking Bad
-                    year: 2008
-                    posterUrl: https://image.tmdb.org/t/p/w500/poster.jpg
-                    backdropUrl: https://image.tmdb.org/t/p/w780/backdrop.jpg
-                    overview: A high school chemistry teacher turned methamphetamine manufacturer.
-                    genres: [Drama]
-                    seasonCount: 5
-                    episodeCount: 62
-                    status: Ended
-                    rating: 8.9
-        '404':
-          description: Show not found or invalid show ID
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ApiErrorResponse'
-              examples:
-                invalidId:
-                  value:
-                    error: Show not found
-                notFound:
-                  value:
-                    error: The resource you requested could not be found.
-        '502':
-          description: Upstream TMDB request failure
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ApiErrorResponse'
-              examples:
-                upstreamError:
-                  value:
-                    error: TMDB request failed with status 500
-                genericUpstreamFailure:
-                  value:
-                    error: TMDB request failed
-
   /api/v1/ratings:
     get:
       tags: [Ratings]
@@ -1163,7 +779,6 @@ paths:
                     totalResults: 1
                     results:
                       - id: 1
-                        tmdbId: 550
                         mediaType: movie
                         score: 8
                         createdAt: '2026-01-01T00:00:00.000Z'
@@ -1218,7 +833,6 @@ paths:
                 success:
                   value:
                     id: 1
-                    tmdbId: 550
                     mediaType: movie
                     score: 8
                     createdAt: '2026-01-01T00:00:00.000Z'
@@ -1278,7 +892,6 @@ paths:
                 success:
                   value:
                     id: 1
-                    tmdbId: 550
                     mediaType: movie
                     score: 8
                     createdAt: '2026-01-01T00:00:00.000Z'
@@ -1330,7 +943,6 @@ paths:
                 success:
                   value:
                     id: 1
-                    tmdbId: 550
                     mediaType: movie
                     score: 9
                     createdAt: '2026-01-01T00:00:00.000Z'
@@ -1459,7 +1071,6 @@ components:
       type: object
       required:
         - id
-        - tmdbId
         - mediaType
         - title
         - body
@@ -1470,9 +1081,6 @@ components:
         id:
           type: integer
           example: 101
-        tmdbId:
-          type: integer
-          example: 550
         mediaType:
           $ref: '#/components/schemas/MediaType'
         title:
@@ -1725,7 +1333,6 @@ components:
       type: object
       required:
         - id
-        - tmdbId
         - mediaType
         - score
         - createdAt
@@ -1735,9 +1342,6 @@ components:
         id:
           type: integer
           example: 1
-        tmdbId:
-          type: integer
-          example: 550
         mediaType:
           $ref: '#/components/schemas/MediaType'
         score:

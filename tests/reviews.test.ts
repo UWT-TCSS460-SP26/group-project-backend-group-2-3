@@ -117,7 +117,6 @@ describe('reviews routes', () => {
 
     expect(createResponse.status).toBe(201);
     expect(createResponse.body).toMatchObject({
-      tmdbId: 910001,
       mediaType: 'movie',
       title: 'Great watch',
       body: 'This movie stayed sharp, focused, and worth revisiting.',
@@ -265,7 +264,6 @@ describe('reviews routes', () => {
     expect(updateResponse.status).toBe(200);
     expect(updateResponse.body).toMatchObject({
       id: createResponse.body.id,
-      tmdbId: 910005,
       title: 'Updated review',
       body: 'This updated review has enough detail for validation to pass.',
       author: {
