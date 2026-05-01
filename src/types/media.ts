@@ -1,3 +1,5 @@
+import type { CommunitySummary } from '../services/community-summary';
+
 export type MediaType = 'movie' | 'show';
 
 export interface MediaListItem {
@@ -18,6 +20,7 @@ export interface MediaListResponse {
 
 export interface MovieDetailResponse {
   backdropUrl: string | null;
+  community: CommunitySummary;
   genres: string[];
   id: number;
   overview: string;
