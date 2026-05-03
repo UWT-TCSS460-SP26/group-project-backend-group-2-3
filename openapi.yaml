@@ -1,10 +1,11 @@
 openapi: 3.0.3
 info:
   title: Group 2 Movie and TV Review API
-  version: 0.1.0
+  version: 3.0.0
   description: |
-    Backend API for TCSS 460 Group 2 Sprint 1.
-    The API proxies TMDB and returns transformed responses.
+    Sprint 3 backend API for TCSS 460 Group 2.
+    Proxies TMDB for media data and persists user ratings, reviews, and bug reports via PostgreSQL.
+    All mutation routes require an Auth2 OIDC bearer token. Public routes (health, issues, media reads) do not.
 
 servers:
   - url: https://group-2-9289.onrender.com
@@ -19,12 +20,14 @@ tags:
     description: Auth2 bearer token usage
   - name: Movies
     description: Movie routes proxied from TMDB
-  - name: Shows
+  - name: TV Shows
     description: TV show routes proxied from TMDB
   - name: Ratings
     description: User ratings for movies and TV shows
   - name: Reviews
     description: User review routes for movies and shows
+  - name: Issues
+    description: Public bug report intake — no authentication required
 
 paths:
   /health:
@@ -50,7 +53,7 @@ paths:
                     type: string
                     example: group-project-backend-group-2-3
 
-  /api/v1/movies/search:
+  /v1/movies/search:
     get:
       tags: [Movies]
       summary: Search movies by title
@@ -120,7 +123,7 @@ paths:
                   value:
                     error: Internal server error
 
-  /api/v1/movies/popular:
+  /v1/movies/popular:
     get:
       tags: [Movies]
       summary: Get popular movies
@@ -179,7 +182,7 @@ paths:
                   value:
                     error: Internal server error
 
-  /api/v1/movies/{id}:
+  /v1/movies/{id}:
     get:
       tags: [Movies]
       summary: Get movie details by id
@@ -213,6 +216,11 @@ paths:
                     runtimeMinutes: 139
                     status: Released
                     rating: 8.4
+                    community:
+                      averageScore: 7.5
+                      ratingCount: 42
+                      reviewCount: 12
+                      recentReviews: []
         '404':
           description: Movie not found or invalid movie ID
           content:
@@ -240,9 +248,9 @@ paths:
                   value:
                     error: Internal server error
 
-  /api/v1/shows/search:
+  /v1/tv-shows/search:
     get:
-      tags: [Shows]
+      tags: [TV Shows]
       summary: Search shows by title
       description: Searches TMDB TV shows and returns a transformed paginated list.
       parameters:
@@ -310,9 +318,9 @@ paths:
                   value:
                     error: Internal server error
 
-  /api/v1/shows/popular:
+  /v1/tv-shows/popular:
     get:
-      tags: [Shows]
+      tags: [TV Shows]
       summary: Get popular shows
       description: Returns popular TMDB TV shows as a transformed paginated list.
       parameters:
@@ -369,9 +377,9 @@ paths:
                   value:
                     error: Internal server error
 
-  /api/v1/shows/{id}:
+  /v1/tv-shows/{id}:
     get:
-      tags: [Shows]
+      tags: [TV Shows]
       summary: Get show details by id
       description: Returns transformed details for a single TV show.
       parameters:
@@ -404,6 +412,11 @@ paths:
                     episodeCount: 62
                     status: Ended
                     rating: 8.9
+                    community:
+                      averageScore: 8.1
+                      ratingCount: 30
+                      reviewCount: 8
+                      recentReviews: []
         '404':
           description: Show not found or invalid show ID
           content:
@@ -431,7 +444,7 @@ paths:
                   value:
                     error: TMDB request failed
 
-  /api/v1/reviews:
+  /v1/reviews:
     get:
       tags: [Reviews]
       summary: List reviews
@@ -581,7 +594,7 @@ paths:
                   value:
                     error: You have already reviewed this item
 
-  /api/v1/reviews/{id}:
+  /v1/reviews/{id}:
     get:
       tags: [Reviews]
       summary: Get review by id
@@ -714,7 +727,7 @@ paths:
                   value:
                     error: Review not found
 
-  /api/v1/ratings:
+  /v1/ratings:
     get:
       tags: [Ratings]
       summary: List ratings
@@ -869,7 +882,7 @@ paths:
                   value:
                     error: You have already rated this item
 
-  /api/v1/ratings/{id}:
+  /v1/ratings/{id}:
     get:
       tags: [Ratings]
       summary: Get a rating by ID
@@ -1007,12 +1020,70 @@ paths:
                   value:
                     error: Rating not found
 
+  /v1/issues:
+    post:
+      tags: [Issues]
+      summary: Submit a bug report
+      description: >
+        Public endpoint — no authentication required.
+        Persists a bug report to the Issue table and returns the new issue ID and status.
+        Both title and description are required; reproductionSteps and reporterContact are optional.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/IssueCreateRequest'
+            examples:
+              minimal:
+                value:
+                  title: App crashes on login
+                  description: Clicking the login button causes a 500 error.
+              full:
+                value:
+                  title: App crashes on login
+                  description: Clicking the login button causes a 500 error.
+                  reproductionSteps: "1. Open the app\n2. Navigate to login\n3. Click the login button"
+                  reporterContact: reporter@example.com
+      responses:
+        '201':
+          description: Bug report created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/IssueResponse'
+              examples:
+                success:
+                  value:
+                    id: 1
+                    status: open
+                    createdAt: '2026-05-01T12:00:00.000Z'
+        '400':
+          description: Validation error — title or description missing, empty, or wrong type
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiErrorResponse'
+              examples:
+                missingTitle:
+                  value:
+                    error: title is required
+                missingDescription:
+                  value:
+                    error: description is required
+                badFieldType:
+                  value:
+                    error: reproductionSteps must be a string
+
 components:
   securitySchemes:
     bearerAuth:
       type: http
       scheme: bearer
       bearerFormat: JWT
+      description: >
+        Auth2 OIDC bearer token. Obtain from the issuer configured in AUTH_ISSUER.
+        The token audience must match API_AUDIENCE (default: group-2-api).
 
   responses:
     UnauthorizedError:
@@ -1233,6 +1304,7 @@ components:
         - runtimeMinutes
         - status
         - rating
+        - community
       properties:
         id:
           type: integer
@@ -1272,6 +1344,8 @@ components:
           type: number
           format: float
           example: 8.4
+        community:
+          $ref: '#/components/schemas/CommunitySummary'
 
     ShowDetailResponse:
       type: object
@@ -1287,6 +1361,7 @@ components:
         - episodeCount
         - status
         - rating
+        - community
       properties:
         id:
           type: integer
@@ -1328,6 +1403,72 @@ components:
           type: number
           format: float
           example: 8.9
+        community:
+          $ref: '#/components/schemas/CommunitySummary'
+
+    CommunitySummary:
+      type: object
+      required:
+        - averageScore
+        - ratingCount
+        - reviewCount
+        - recentReviews
+      properties:
+        averageScore:
+          type: number
+          format: float
+          nullable: true
+          example: 7.5
+        ratingCount:
+          type: integer
+          example: 42
+        reviewCount:
+          type: integer
+          example: 12
+        recentReviews:
+          type: array
+          items:
+            $ref: '#/components/schemas/ReviewResponse'
+
+    IssueCreateRequest:
+      type: object
+      required:
+        - title
+        - description
+      properties:
+        title:
+          type: string
+          example: App crashes on login
+        description:
+          type: string
+          example: Clicking the login button causes a 500 error.
+        reproductionSteps:
+          type: string
+          nullable: true
+          example: "1. Open app\n2. Click login"
+        reporterContact:
+          type: string
+          nullable: true
+          example: reporter@example.com
+
+    IssueResponse:
+      type: object
+      required:
+        - id
+        - status
+        - createdAt
+      properties:
+        id:
+          type: integer
+          example: 1
+        status:
+          type: string
+          enum: [open, in_progress, resolved, closed]
+          example: open
+        createdAt:
+          type: string
+          format: date-time
+          example: '2026-05-01T12:00:00.000Z'
 
     RatingResponse:
       type: object
