@@ -1,4 +1,14 @@
+import type { ReviewResponse } from '../transformers/user-content';
+
 export type MediaType = 'movie' | 'show';
+
+/** Community ratings and reviews on a media detail response (shared by movie and TV detail routes). */
+export interface MediaDetailCommunity {
+  averageScore: number | null;
+  ratingCount: number;
+  reviewCount: number;
+  recentReviews: ReviewResponse[];
+}
 
 export interface MediaListItem {
   id: number;
@@ -41,6 +51,7 @@ export interface ShowDetailResponse {
   status: string;
   title: string;
   year: number | null;
+  community: MediaDetailCommunity;
 }
 
 export interface TmdbGenre {

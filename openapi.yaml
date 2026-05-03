@@ -5,6 +5,7 @@ info:
   description: |
     Backend API for TCSS 460 Group 2 Sprint 1.
     The API proxies TMDB and returns transformed responses.
+    Versioned resources are available under `/api/v1/...` and `/v1/...` (same handlers).
 
 servers:
   - url: https://group-2-9289.onrender.com
@@ -240,16 +241,16 @@ paths:
                   value:
                     error: Internal server error
 
-  /api/v1/shows/search:
+  /api/v1/tv-shows/search:
     get:
       tags: [Shows]
-      summary: Search shows by title
+      summary: Search TV shows by title
       description: Searches TMDB TV shows and returns a transformed paginated list.
       parameters:
         - in: query
-          name: q
+          name: title
           required: true
-          description: Show title query.
+          description: Show title search string.
           schema:
             type: string
             minLength: 1
@@ -290,9 +291,9 @@ paths:
               schema:
                 $ref: '#/components/schemas/ApiErrorResponse'
               examples:
-                missingQ:
+                missingTitle:
                   value:
-                    error: q is required
+                    error: title is required
                 invalidPage:
                   value:
                     error: page must be a positive integer
@@ -310,7 +311,7 @@ paths:
                   value:
                     error: Internal server error
 
-  /api/v1/shows/popular:
+  /api/v1/tv-shows/popular:
     get:
       tags: [Shows]
       summary: Get popular shows
@@ -369,11 +370,14 @@ paths:
                   value:
                     error: Internal server error
 
-  /api/v1/shows/{id}:
+  /api/v1/tv-shows/{id}:
     get:
       tags: [Shows]
-      summary: Get show details by id
-      description: Returns transformed details for a single TV show.
+      summary: Get TV show details by id
+      description: |
+        Returns TMDB metadata for a single TV show plus a `community` object with
+        local average score, rating and review counts, and recent reviews (newest first).
+        The same shape is used for empty local data (null average, zero counts, empty recent reviews).
       parameters:
         - in: path
           name: id
@@ -404,6 +408,38 @@ paths:
                     episodeCount: 62
                     status: Ended
                     rating: 8.9
+                    community:
+                      averageScore: null
+                      ratingCount: 0
+                      reviewCount: 0
+                      recentReviews: []
+                successWithLocalReviews:
+                  value:
+                    id: 1396
+                    title: Breaking Bad
+                    year: 2008
+                    posterUrl: https://image.tmdb.org/t/p/w500/poster.jpg
+                    backdropUrl: https://image.tmdb.org/t/p/w780/backdrop.jpg
+                    overview: A high school chemistry teacher turned methamphetamine manufacturer.
+                    genres: [Drama]
+                    seasonCount: 5
+                    episodeCount: 62
+                    status: Ended
+                    rating: 8.9
+                    community:
+                      averageScore: 8.5
+                      ratingCount: 14
+                      reviewCount: 5
+                      recentReviews:
+                        - id: 501
+                          mediaType: show
+                          title: Binge-worthy
+                          body: Every episode earns its runtime.
+                          createdAt: '2026-05-02T15:00:00.000Z'
+                          updatedAt: '2026-05-02T15:00:00.000Z'
+                          author:
+                            id: 77
+                            username: tvfan
         '404':
           description: Show not found or invalid show ID
           content:
@@ -1273,6 +1309,39 @@ components:
           format: float
           example: 8.4
 
+    MediaDetailCommunity:
+      type: object
+      description: |
+        Local community ratings and reviews for a TMDB title. Returned as a sibling of TMDB fields
+        on TV show detail; the same contract is intended for movie detail when that route is enriched.
+      required:
+        - averageScore
+        - ratingCount
+        - reviewCount
+        - recentReviews
+      properties:
+        averageScore:
+          type: number
+          format: float
+          nullable: true
+          description: Mean user rating score when at least one rating exists; null when there are no ratings.
+          example: 8.5
+        ratingCount:
+          type: integer
+          minimum: 0
+          description: Number of user ratings for this TMDB id and media type.
+          example: 14
+        reviewCount:
+          type: integer
+          minimum: 0
+          description: Total number of user reviews for this TMDB id and media type.
+          example: 5
+        recentReviews:
+          type: array
+          description: Most recent reviews, newest first (server limits length, typically three items).
+          items:
+            $ref: '#/components/schemas/ReviewResponse'
+
     ShowDetailResponse:
       type: object
       required:
@@ -1287,6 +1356,7 @@ components:
         - episodeCount
         - status
         - rating
+        - community
       properties:
         id:
           type: integer
@@ -1327,7 +1397,10 @@ components:
         rating:
           type: number
           format: float
+          description: TMDB vote average for the show.
           example: 8.9
+        community:
+          $ref: '#/components/schemas/MediaDetailCommunity'
 
     RatingResponse:
       type: object

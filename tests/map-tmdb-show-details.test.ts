@@ -1,5 +1,12 @@
 import { mapTmdbShowDetailsToShowDetail } from '../src/utils/map-tmdb-show-details';
-import type { TmdbShowDetails } from '../src/types/media';
+import type { MediaDetailCommunity, TmdbShowDetails } from '../src/types/media';
+
+const zeroCommunity: MediaDetailCommunity = {
+  averageScore: null,
+  ratingCount: 0,
+  reviewCount: 0,
+  recentReviews: [],
+};
 
 describe('mapTmdbShowDetailsToShowDetail', () => {
   const originalTmdbApiKey = process.env.TMDB_API_KEY;
@@ -32,8 +39,9 @@ describe('mapTmdbShowDetailsToShowDetail', () => {
       vote_average: 8.9,
     };
 
-    expect(mapTmdbShowDetailsToShowDetail(tmdbPayload)).toEqual({
+    expect(mapTmdbShowDetailsToShowDetail(tmdbPayload, zeroCommunity)).toEqual({
       backdropUrl: 'https://image.tmdb.org/t/p/w780/backdrop.jpg',
+      community: zeroCommunity,
       episodeCount: 62,
       genres: ['Drama'],
       id: 1396,
@@ -62,7 +70,7 @@ describe('mapTmdbShowDetailsToShowDetail', () => {
       vote_average: 0,
     };
 
-    expect(mapTmdbShowDetailsToShowDetail(tmdbPayload)).toMatchObject({
+    expect(mapTmdbShowDetailsToShowDetail(tmdbPayload, zeroCommunity)).toMatchObject({
       backdropUrl: null,
       posterUrl: null,
       title: 'TBD',

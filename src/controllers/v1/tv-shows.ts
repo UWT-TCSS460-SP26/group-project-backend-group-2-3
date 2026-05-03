@@ -1,5 +1,6 @@
 import { Request, Response, NextFunction } from 'express';
 import { HttpError } from '../../errors/http-error';
+import { getCommunitySummary } from '../../services/community-summary';
 import { tmdbClient } from '../../services/tmdb-client';
 import { mapTmdbShowDetailsToShowDetail } from '../../utils/map-tmdb-show-details';
 import { mapTmdbShowListItems } from '../../transformers/show-list';
@@ -71,7 +72,8 @@ export const tvShowDetails = async (
 
   try {
     const tmdbShow = await tmdbClient.getShowDetails(showId);
-    response.status(200).json(mapTmdbShowDetailsToShowDetail(tmdbShow));
+    const community = await getCommunitySummary(showId, 'show');
+    response.status(200).json(mapTmdbShowDetailsToShowDetail(tmdbShow, community));
   } catch (error) {
     if (error instanceof HttpError) {
       next(error);

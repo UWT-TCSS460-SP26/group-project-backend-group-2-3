@@ -1,9 +1,12 @@
 import { getTmdbConfig } from '../config/env';
-import { ShowDetailResponse, TmdbShowDetails } from '../types/media';
+import { MediaDetailCommunity, ShowDetailResponse, TmdbShowDetails } from '../types/media';
 import { extractYear } from './extract-year';
 import { buildTmdbImageUrl } from './tmdb-image';
 
-export const mapTmdbShowDetailsToShowDetail = (show: TmdbShowDetails): ShowDetailResponse => {
+export const mapTmdbShowDetailsToShowDetail = (
+  show: TmdbShowDetails,
+  community: MediaDetailCommunity
+): ShowDetailResponse => {
   const { imageBaseUrl } = getTmdbConfig();
 
   return {
@@ -18,5 +21,6 @@ export const mapTmdbShowDetailsToShowDetail = (show: TmdbShowDetails): ShowDetai
     status: show.status,
     title: show.name,
     year: extractYear(show.first_air_date),
+    community,
   };
 };
