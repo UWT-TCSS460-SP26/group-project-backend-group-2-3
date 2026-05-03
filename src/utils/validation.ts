@@ -128,3 +128,23 @@ export const parseOptionalPositiveIntegerFilter = (
 
   return parsed;
 };
+
+export const parseRequiredStringField = (rawValue: unknown, fieldName: string): string => {
+  if (typeof rawValue !== 'string' || rawValue.trim() === '') {
+    throw new HttpError(400, `${fieldName} is required`);
+  }
+
+  return rawValue.trim();
+};
+
+export const parseOptionalStringField = (
+  rawValue: unknown,
+  fieldName: string
+): string | undefined => {
+  if (rawValue === undefined || rawValue === null) return undefined;
+  if (typeof rawValue !== 'string') {
+    throw new HttpError(400, `${fieldName} must be a string`);
+  }
+
+  return rawValue.trim() || undefined;
+};

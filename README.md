@@ -2,12 +2,12 @@
 
 Express and TypeScript API for the Movie and TV Review Platform group project.
 
-## Sprint 0 Endpoints
+## Endpoints
 
-- Heartbeat: `GET /health`
+- Health: `GET /health`
 - API docs: `GET /api-docs`
-- Versioned API base routes: `GET /v1/*`
-- Backward-compatible aliases: `GET /api/v1/*` and unversioned `/*` (v1)
+- Versioned API base: `/v1/*` (also accessible as `/api/v1/*` and `/*`)
+- Bug reports: `POST /v1/issues` (public — no auth required)
 
 Local docs are available at [http://localhost:3000/api-docs](http://localhost:3000/api-docs).
 
