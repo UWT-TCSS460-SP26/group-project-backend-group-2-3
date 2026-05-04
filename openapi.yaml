@@ -1113,8 +1113,9 @@ components:
       scheme: bearer
       bearerFormat: JWT
       description: >
-        Auth2 OIDC bearer token. Obtain from the issuer configured in AUTH_ISSUER.
-        The token audience must match API_AUDIENCE (default: group-2-api).
+        Auth² OIDC bearer token. Issued by Auth² at https://tcss-460-iam.onrender.com.
+        Token audience must be group-2-api. Obtain a token from the TCSS 460 Token Playground,
+        then pass it as Authorization: Bearer <token>.
 
   responses:
     UnauthorizedError:
