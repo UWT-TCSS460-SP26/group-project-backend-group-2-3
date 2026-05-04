@@ -1,7 +1,16 @@
 import request from 'supertest';
 import { app } from '../src/app';
 import { HttpError } from '../src/errors/http-error';
+import * as communitySummaryService from '../src/services/community-summary';
 import { tmdbClient } from '../src/services/tmdb-client';
+import type { MediaDetailCommunity } from '../src/types/media';
+
+const emptyCommunity: MediaDetailCommunity = {
+  averageScore: null,
+  ratingCount: 0,
+  reviewCount: 0,
+  recentReviews: [],
+};
 
 describe('Show Detail Route', () => {
   const originalTmdbApiKey = process.env.TMDB_API_KEY;
@@ -37,12 +46,16 @@ describe('Show Detail Route', () => {
       status: 'Ended',
       vote_average: 8.9,
     });
+    const getCommunitySummarySpy = jest
+      .spyOn(communitySummaryService, 'getCommunitySummary')
+      .mockResolvedValue(emptyCommunity);
 
     const response = await request(app).get('/tv-shows/1396');
 
     expect(response.status).toBe(200);
     expect(response.body).toEqual({
       backdropUrl: 'https://image.tmdb.org/t/p/w780/backdrop.jpg',
+      community: emptyCommunity,
       episodeCount: 62,
       genres: ['Drama'],
       id: 1396,
@@ -56,6 +69,7 @@ describe('Show Detail Route', () => {
     });
     expect(getShowDetailsSpy).toHaveBeenCalledTimes(1);
     expect(getShowDetailsSpy).toHaveBeenCalledWith(1396);
+    expect(getCommunitySummarySpy).toHaveBeenCalledWith(1396, 'show');
   });
 
   it('GET /tv-shows/:id — returns 404 for TMDB not found', async () => {

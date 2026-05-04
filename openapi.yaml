@@ -5,6 +5,7 @@ info:
   description: |
     Sprint 3 backend API for TCSS 460 Group 2.
     Proxies TMDB for media data and persists user ratings, reviews, and bug reports via PostgreSQL.
+    Versioned resources are documented under `/v1/...`; `/api/v1/...` remains supported as a compatibility alias.
     All mutation routes require an Auth2 OIDC bearer token. Public routes (health, issues, media reads) do not.
 
 servers:
@@ -60,7 +61,7 @@ paths:
       description: Searches TMDB for movies and returns a transformed paginated list.
       parameters:
         - in: query
-          name: q
+          name: title
           required: true
           description: Movie title query.
           schema:
@@ -103,9 +104,9 @@ paths:
               schema:
                 $ref: '#/components/schemas/ApiErrorResponse'
               examples:
-                missingQ:
+                missingTitle:
                   value:
-                    error: Query parameter q is required
+                    error: Query parameter title is required
                 invalidPage:
                   value:
                     error: Query parameter page must be a positive integer
@@ -255,9 +256,9 @@ paths:
       description: Searches TMDB TV shows and returns a transformed paginated list.
       parameters:
         - in: query
-          name: q
+          name: title
           required: true
-          description: Show title query.
+          description: Show title search string.
           schema:
             type: string
             minLength: 1
@@ -298,9 +299,9 @@ paths:
               schema:
                 $ref: '#/components/schemas/ApiErrorResponse'
               examples:
-                missingQ:
+                missingTitle:
                   value:
-                    error: q is required
+                    error: title is required
                 invalidPage:
                   value:
                     error: page must be a positive integer
@@ -381,7 +382,10 @@ paths:
     get:
       tags: [TV Shows]
       summary: Get show details by id
-      description: Returns transformed details for a single TV show.
+      description: |
+        Returns TMDB metadata for a single TV show plus a `community` object with
+        local average score, rating and review counts, and recent reviews (newest first).
+        The same shape is used for empty local data (null average, zero counts, empty recent reviews).
       parameters:
         - in: path
           name: id
@@ -413,10 +417,37 @@ paths:
                     status: Ended
                     rating: 8.9
                     community:
-                      averageScore: 8.1
-                      ratingCount: 30
-                      reviewCount: 8
+                      averageScore: null
+                      ratingCount: 0
+                      reviewCount: 0
                       recentReviews: []
+                successWithLocalReviews:
+                  value:
+                    id: 1396
+                    title: Breaking Bad
+                    year: 2008
+                    posterUrl: https://image.tmdb.org/t/p/w500/poster.jpg
+                    backdropUrl: https://image.tmdb.org/t/p/w780/backdrop.jpg
+                    overview: A high school chemistry teacher turned methamphetamine manufacturer.
+                    genres: [Drama]
+                    seasonCount: 5
+                    episodeCount: 62
+                    status: Ended
+                    rating: 8.9
+                    community:
+                      averageScore: 8.5
+                      ratingCount: 14
+                      reviewCount: 5
+                      recentReviews:
+                        - id: 501
+                          mediaType: show
+                          title: Binge-worthy
+                          body: Every episode earns its runtime.
+                          createdAt: '2026-05-02T15:00:00.000Z'
+                          updatedAt: '2026-05-02T15:00:00.000Z'
+                          author:
+                            id: 77
+                            username: tvfan
         '404':
           description: Show not found or invalid show ID
           content:
@@ -1347,6 +1378,39 @@ components:
         community:
           $ref: '#/components/schemas/CommunitySummary'
 
+    CommunitySummary:
+      type: object
+      description: |
+        Local community ratings and reviews for a TMDB title. Returned as a sibling of TMDB fields
+        on movie and TV show detail responses.
+      required:
+        - averageScore
+        - ratingCount
+        - reviewCount
+        - recentReviews
+      properties:
+        averageScore:
+          type: number
+          format: float
+          nullable: true
+          description: Mean user rating score when at least one rating exists; null when there are no ratings.
+          example: 8.5
+        ratingCount:
+          type: integer
+          minimum: 0
+          description: Number of user ratings for this TMDB id and media type.
+          example: 14
+        reviewCount:
+          type: integer
+          minimum: 0
+          description: Total number of user reviews for this TMDB id and media type.
+          example: 5
+        recentReviews:
+          type: array
+          description: Most recent reviews, newest first (server limits length, typically three items).
+          items:
+            $ref: '#/components/schemas/ReviewResponse'
+
     ShowDetailResponse:
       type: object
       required:
@@ -1402,33 +1466,10 @@ components:
         rating:
           type: number
           format: float
+          description: TMDB vote average for the show.
           example: 8.9
         community:
           $ref: '#/components/schemas/CommunitySummary'
-
-    CommunitySummary:
-      type: object
-      required:
-        - averageScore
-        - ratingCount
-        - reviewCount
-        - recentReviews
-      properties:
-        averageScore:
-          type: number
-          format: float
-          nullable: true
-          example: 7.5
-        ratingCount:
-          type: integer
-          example: 42
-        reviewCount:
-          type: integer
-          example: 12
-        recentReviews:
-          type: array
-          items:
-            $ref: '#/components/schemas/ReviewResponse'
 
     IssueCreateRequest:
       type: object
