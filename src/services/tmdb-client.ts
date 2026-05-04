@@ -1,5 +1,6 @@
 import { getTmdbConfig } from '../config/env';
 import { HttpError } from '../errors/http-error';
+import { HTTP_STATUS, HttpStatusCode } from '../types/api';
 import {
   TmdbErrorResponse,
   TmdbListResponse,
@@ -29,12 +30,12 @@ const buildTmdbUrl = (
   return url;
 };
 
-const mapTmdbStatusToApiStatus = (statusCode: number): number => {
+const mapTmdbStatusToApiStatus = (statusCode: number): HttpStatusCode => {
   if (statusCode === 404) {
-    return 404;
+    return HTTP_STATUS.notFound;
   }
 
-  return 502;
+  return HTTP_STATUS.badGateway;
 };
 
 const readTmdbErrorMessage = async (response: globalThis.Response): Promise<string> => {

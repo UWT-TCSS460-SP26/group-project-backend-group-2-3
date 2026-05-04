@@ -1,6 +1,5 @@
 import { Request, Response, NextFunction } from 'express';
-import { HttpError } from '../errors/http-error';
-import { ApiErrorResponse } from '../types/media';
+import { mapErrorToApiResponse } from '../errors/error-mapper';
 
 export const errorHandler = (
   err: unknown,
@@ -8,15 +7,6 @@ export const errorHandler = (
   response: Response,
   _next: NextFunction
 ): void => {
-  if (err instanceof HttpError) {
-    response.status(err.statusCode).json({
-      error: err.message,
-    } as ApiErrorResponse);
-    return;
-  }
-
-  // Unexpected error — return 502 with generic message
-  response.status(502).json({
-    error: 'Internal server error',
-  } as ApiErrorResponse);
+  const mappedError = mapErrorToApiResponse(err);
+  response.status(mappedError.statusCode).json(mappedError.body);
 };

@@ -27,7 +27,7 @@ const makeTmdbSearchResponse = (overrides = {}) => ({
   ...overrides,
 });
 
-describe('GET /api/v2/tv-shows/search', () => {
+describe('GET /api/v1/tv-shows/search', () => {
   beforeAll(() => {
     process.env.TMDB_API_KEY = 'test-api-key';
   });
@@ -39,7 +39,7 @@ describe('GET /api/v2/tv-shows/search', () => {
   it('returns shaped results when title and page are valid', async () => {
     mockedTmdbClient.searchShows.mockResolvedValueOnce(makeTmdbSearchResponse());
 
-    const response = await request(app).get('/api/v2/tv-shows/search').query({
+    const response = await request(app).get('/api/v1/tv-shows/search').query({
       title: 'lost',
       page: '1',
     });
@@ -65,7 +65,7 @@ describe('GET /api/v2/tv-shows/search', () => {
   });
 
   it('returns 400 when title is omitted', async () => {
-    const response = await request(app).get('/api/v2/tv-shows/search').query({ page: '1' });
+    const response = await request(app).get('/api/v1/tv-shows/search').query({ page: '1' });
 
     expect(response.status).toBe(400);
     expect(response.body).toEqual({ error: 'title is required' });

@@ -1,10 +1,12 @@
 openapi: 3.0.3
 info:
   title: Group 2 Movie and TV Review API
-  version: 0.1.0
+  version: 3.0.0
   description: |
-    Backend API for TCSS 460 Group 2 Sprint 1.
-    The API proxies TMDB and returns transformed responses.
+    Sprint 3 backend API for TCSS 460 Group 2.
+    Proxies TMDB for media data and persists user ratings, reviews, and bug reports via PostgreSQL.
+    Versioned resources are documented under `/v1/...`; `/api/v1/...` remains supported as a compatibility alias.
+    All mutation routes require an Auth2 OIDC bearer token. Public routes (health, issues, media reads) do not.
 
 servers:
   - url: https://group-2-9289.onrender.com
@@ -15,10 +17,18 @@ servers:
 tags:
   - name: Health
     description: Service health checks
+  - name: Auth
+    description: Auth2 bearer token usage
   - name: Movies
     description: Movie routes proxied from TMDB
-  - name: Shows
+  - name: TV Shows
     description: TV show routes proxied from TMDB
+  - name: Ratings
+    description: User ratings for movies and TV shows
+  - name: Reviews
+    description: User review routes for movies and shows
+  - name: Issues
+    description: Public bug report intake — no authentication required
 
 paths:
   /health:
@@ -44,388 +54,7 @@ paths:
                     type: string
                     example: group-project-backend-group-2-3
 
-  /api/v1/movies/search:
-    get:
-      tags: [Movies]
-      summary: Search movies by title
-      description: Searches TMDB for movies and returns a transformed paginated list.
-      parameters:
-        - in: query
-          name: q
-          required: true
-          description: Movie title query.
-          schema:
-            type: string
-            minLength: 1
-          example: Fight Club
-        - in: query
-          name: page
-          required: false
-          description: Positive integer page number. Defaults to 1.
-          schema:
-            type: integer
-            minimum: 1
-            default: 1
-          example: 1
-      responses:
-        '200':
-          description: Paginated list of matching movies
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/MediaListResponse'
-              examples:
-                success:
-                  value:
-                    page: 1
-                    totalPages: 5
-                    totalResults: 92
-                    results:
-                      - id: 550
-                        title: Fight Club
-                        year: 1999
-                        posterUrl: https://image.tmdb.org/t/p/w500/example.jpg
-                        overview: An insomniac office worker crosses paths with a soap maker.
-                        mediaType: movie
-        '400':
-          description: Missing or invalid query parameters
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ApiErrorResponse'
-              examples:
-                missingQ:
-                  value:
-                    error: Query parameter q is required
-                invalidPage:
-                  value:
-                    error: Query parameter page must be a positive integer
-        '502':
-          description: TMDB upstream failure
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ApiErrorResponse'
-              examples:
-                upstreamFailure:
-                  value:
-                    error: TMDB request failed with status 500
-                genericFailure:
-                  value:
-                    error: Internal server error
-
-  /api/v1/movies/popular:
-    get:
-      tags: [Movies]
-      summary: Get popular movies
-      description: Returns popular TMDB movies as a transformed paginated list.
-      parameters:
-        - in: query
-          name: page
-          required: false
-          description: Positive integer page number. Defaults to 1.
-          schema:
-            type: integer
-            minimum: 1
-            default: 1
-          example: 1
-      responses:
-        '200':
-          description: Paginated list of popular movies
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/MediaListResponse'
-              examples:
-                success:
-                  value:
-                    page: 1
-                    totalPages: 500
-                    totalResults: 10000
-                    results:
-                      - id: 550
-                        title: Fight Club
-                        year: 1999
-                        posterUrl: https://image.tmdb.org/t/p/w500/example.jpg
-                        overview: An insomniac office worker crosses paths with a soap maker.
-                        mediaType: movie
-        '400':
-          description: Invalid page parameter
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ApiErrorResponse'
-              examples:
-                invalidPage:
-                  value:
-                    error: Query parameter page must be a positive integer
-        '502':
-          description: TMDB upstream failure
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ApiErrorResponse'
-              examples:
-                upstreamFailure:
-                  value:
-                    error: TMDB request failed with status 500
-                genericFailure:
-                  value:
-                    error: Internal server error
-
-  /api/v1/movies/{id}:
-    get:
-      tags: [Movies]
-      summary: Get movie details by id
-      description: Returns transformed details for a single movie.
-      parameters:
-        - in: path
-          name: id
-          required: true
-          description: Positive movie id.
-          schema:
-            type: integer
-            minimum: 1
-          example: 550
-      responses:
-        '200':
-          description: Movie details
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/MovieDetailResponse'
-              examples:
-                success:
-                  value:
-                    id: 550
-                    title: Fight Club
-                    year: 1999
-                    posterUrl: https://image.tmdb.org/t/p/w500/poster.jpg
-                    backdropUrl: https://image.tmdb.org/t/p/w780/backdrop.jpg
-                    overview: An insomniac office worker crosses paths with a soap maker.
-                    genres: [Drama]
-                    runtimeMinutes: 139
-                    status: Released
-                    rating: 8.4
-        '404':
-          description: Movie not found or invalid movie ID
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ApiErrorResponse'
-              examples:
-                invalidId:
-                  value:
-                    error: Movie not found
-                notFound:
-                  value:
-                    error: The resource you requested could not be found.
-        '502':
-          description: Upstream TMDB request failure
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ApiErrorResponse'
-              examples:
-                upstreamError:
-                  value:
-                    error: TMDB request failed with status 500
-                genericFailure:
-                  value:
-                    error: Internal server error
-
-  /api/v1/shows/search:
-    get:
-      tags: [Shows]
-      summary: Search shows by title
-      description: Searches TMDB TV shows and returns a transformed paginated list.
-      parameters:
-        - in: query
-          name: q
-          required: true
-          description: Show title query.
-          schema:
-            type: string
-            minLength: 1
-          example: lost
-        - in: query
-          name: page
-          required: false
-          description: Positive integer page number. Defaults to 1.
-          schema:
-            type: integer
-            minimum: 1
-            default: 1
-          example: 1
-      responses:
-        '200':
-          description: Paginated list of matching shows
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/MediaListResponse'
-              examples:
-                success:
-                  value:
-                    page: 1
-                    totalPages: 2
-                    totalResults: 40
-                    results:
-                      - id: 4607
-                        title: Lost
-                        year: 2004
-                        posterUrl: https://image.tmdb.org/t/p/w500/ogbwjg3we0UppYjVJwVH15BReqA.jpg
-                        overview: The survivors of a plane crash are forced to work together in order to survive on a seemingly deserted tropical island.
-                        mediaType: show
-        '400':
-          description: Missing or invalid query parameters
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ApiErrorResponse'
-              examples:
-                missingQ:
-                  value:
-                    error: q is required
-                invalidPage:
-                  value:
-                    error: page must be a positive integer
-        '502':
-          description: TMDB upstream failure
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ApiErrorResponse'
-              examples:
-                upstreamFailure:
-                  value:
-                    error: Invalid API key
-                genericFailure:
-                  value:
-                    error: Internal server error
-
-  /api/v1/shows/popular:
-    get:
-      tags: [Shows]
-      summary: Get popular shows
-      description: Returns popular TMDB TV shows as a transformed paginated list.
-      parameters:
-        - in: query
-          name: page
-          required: false
-          description: Positive integer page number. Defaults to 1.
-          schema:
-            type: integer
-            minimum: 1
-            default: 1
-          example: 1
-      responses:
-        '200':
-          description: Paginated list of popular shows
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/MediaListResponse'
-              examples:
-                success:
-                  value:
-                    page: 1
-                    totalPages: 1000
-                    totalResults: 20000
-                    results:
-                      - id: 95557
-                        title: Invincible
-                        year: 2021
-                        posterUrl: https://image.tmdb.org/t/p/w500/yDWJYRAwMNKbIYT8ZB33qy84uzO.jpg
-                        overview: An adult animated series based on the Skybound/Image comic about a teenager whose father is the most powerful superhero on the planet.
-                        mediaType: show
-        '400':
-          description: Invalid page parameter
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ApiErrorResponse'
-              examples:
-                invalidPage:
-                  value:
-                    error: page must be a positive integer
-        '502':
-          description: TMDB upstream failure
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ApiErrorResponse'
-              examples:
-                upstreamFailure:
-                  value:
-                    error: Invalid API key
-                genericFailure:
-                  value:
-                    error: Internal server error
-
-  /api/v1/shows/{id}:
-    get:
-      tags: [Shows]
-      summary: Get show details by id
-      description: Returns transformed details for a single TV show.
-      parameters:
-        - in: path
-          name: id
-          required: true
-          description: Positive show id.
-          schema:
-            type: integer
-            minimum: 1
-          example: 1396
-      responses:
-        '200':
-          description: Show details
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ShowDetailResponse'
-              examples:
-                success:
-                  value:
-                    id: 1396
-                    title: Breaking Bad
-                    year: 2008
-                    posterUrl: https://image.tmdb.org/t/p/w500/poster.jpg
-                    backdropUrl: https://image.tmdb.org/t/p/w780/backdrop.jpg
-                    overview: A high school chemistry teacher turned methamphetamine manufacturer.
-                    genres: [Drama]
-                    seasonCount: 5
-                    episodeCount: 62
-                    status: Ended
-                    rating: 8.9
-        '404':
-          description: Show not found or invalid show ID
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ApiErrorResponse'
-              examples:
-                invalidId:
-                  value:
-                    error: Show not found
-                notFound:
-                  value:
-                    error: The resource you requested could not be found.
-        '502':
-          description: Upstream TMDB request failure
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ApiErrorResponse'
-              examples:
-                upstreamError:
-                  value:
-                    error: TMDB request failed with status 500
-                genericUpstreamFailure:
-                  value:
-                    error: TMDB request failed
-
-  /api/v2/movies/search:
+  /v1/movies/search:
     get:
       tags: [Movies]
       summary: Search movies by title
@@ -495,7 +124,7 @@ paths:
                   value:
                     error: Internal server error
 
-  /api/v2/movies/popular:
+  /v1/movies/popular:
     get:
       tags: [Movies]
       summary: Get popular movies
@@ -554,7 +183,7 @@ paths:
                   value:
                     error: Internal server error
 
-  /api/v2/movies/{id}:
+  /v1/movies/{id}:
     get:
       tags: [Movies]
       summary: Get movie details by id
@@ -588,6 +217,11 @@ paths:
                     runtimeMinutes: 139
                     status: Released
                     rating: 8.4
+                    community:
+                      averageScore: 7.5
+                      ratingCount: 42
+                      reviewCount: 12
+                      recentReviews: []
         '404':
           description: Movie not found or invalid movie ID
           content:
@@ -615,16 +249,16 @@ paths:
                   value:
                     error: Internal server error
 
-  /api/v2/tv-shows/search:
+  /v1/tv-shows/search:
     get:
-      tags: [Shows]
+      tags: [TV Shows]
       summary: Search shows by title
       description: Searches TMDB TV shows and returns a transformed paginated list.
       parameters:
         - in: query
           name: title
           required: true
-          description: Show title query.
+          description: Show title search string.
           schema:
             type: string
             minLength: 1
@@ -685,9 +319,9 @@ paths:
                   value:
                     error: Internal server error
 
-  /api/v2/tv-shows/popular:
+  /v1/tv-shows/popular:
     get:
-      tags: [Shows]
+      tags: [TV Shows]
       summary: Get popular shows
       description: Returns popular TMDB TV shows as a transformed paginated list.
       parameters:
@@ -744,11 +378,14 @@ paths:
                   value:
                     error: Internal server error
 
-  /api/v2/tv-shows/{id}:
+  /v1/tv-shows/{id}:
     get:
-      tags: [Shows]
+      tags: [TV Shows]
       summary: Get show details by id
-      description: Returns transformed details for a single TV show.
+      description: |
+        Returns TMDB metadata for a single TV show plus a `community` object with
+        local average score, rating and review counts, and recent reviews (newest first).
+        The same shape is used for empty local data (null average, zero counts, empty recent reviews).
       parameters:
         - in: path
           name: id
@@ -779,6 +416,38 @@ paths:
                     episodeCount: 62
                     status: Ended
                     rating: 8.9
+                    community:
+                      averageScore: null
+                      ratingCount: 0
+                      reviewCount: 0
+                      recentReviews: []
+                successWithLocalReviews:
+                  value:
+                    id: 1396
+                    title: Breaking Bad
+                    year: 2008
+                    posterUrl: https://image.tmdb.org/t/p/w500/poster.jpg
+                    backdropUrl: https://image.tmdb.org/t/p/w780/backdrop.jpg
+                    overview: A high school chemistry teacher turned methamphetamine manufacturer.
+                    genres: [Drama]
+                    seasonCount: 5
+                    episodeCount: 62
+                    status: Ended
+                    rating: 8.9
+                    community:
+                      averageScore: 8.5
+                      ratingCount: 14
+                      reviewCount: 5
+                      recentReviews:
+                        - id: 501
+                          mediaType: show
+                          title: Binge-worthy
+                          body: Every episode earns its runtime.
+                          createdAt: '2026-05-02T15:00:00.000Z'
+                          updatedAt: '2026-05-02T15:00:00.000Z'
+                          author:
+                            id: 77
+                            username: tvfan
         '404':
           description: Show not found or invalid show ID
           content:
@@ -806,8 +475,678 @@ paths:
                   value:
                     error: TMDB request failed
 
+  /v1/reviews:
+    get:
+      tags: [Reviews]
+      summary: List reviews
+      description: Returns paginated reviews with optional media and author filters.
+      parameters:
+        - in: query
+          name: tmdbId
+          required: false
+          description: Positive TMDB id filter.
+          schema:
+            type: integer
+            minimum: 1
+          example: 550
+        - in: query
+          name: mediaType
+          required: false
+          description: Filter by media type.
+          schema:
+            type: string
+            enum: [movie, show]
+          example: movie
+        - in: query
+          name: userId
+          required: false
+          description: Positive user id filter.
+          schema:
+            type: integer
+            minimum: 1
+          example: 1
+        - in: query
+          name: page
+          required: false
+          description: Positive integer page number. Defaults to 1.
+          schema:
+            type: integer
+            minimum: 1
+            default: 1
+          example: 1
+        - in: query
+          name: pageSize
+          required: false
+          description: Positive integer page size up to 50. Defaults to 10.
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 50
+            default: 10
+          example: 10
+      responses:
+        '200':
+          description: Paginated review list
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ReviewListResponse'
+              examples:
+                success:
+                  value:
+                    page: 1
+                    pageSize: 1
+                    totalPages: 1
+                    totalResults: 1
+                    results:
+                      - id: 101
+                        mediaType: movie
+                        title: Great watch
+                        body: This movie stayed sharp, focused, and worth revisiting.
+                        createdAt: '2026-04-26T18:30:00.000Z'
+                        updatedAt: '2026-04-26T18:30:00.000Z'
+                        author:
+                          id: 1
+                          username: reviews-int-owner
+        '400':
+          description: Invalid query parameters
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiErrorResponse'
+              examples:
+                invalidMediaType:
+                  value:
+                    error: Query parameter mediaType must be either movie or show
+                invalidPageSize:
+                  value:
+                    error: Query parameter pageSize must be 50 or less
+    post:
+      tags: [Reviews]
+      summary: Create review
+      description: Creates a review for a movie or show. One review per user per item.
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ReviewCreateRequest'
+            examples:
+              success:
+                value:
+                  tmdbId: 550
+                  mediaType: movie
+                  title: Great watch
+                  body: This movie stayed sharp, focused, and worth revisiting.
+      responses:
+        '201':
+          description: Review created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ReviewResponse'
+              examples:
+                success:
+                  value:
+                    id: 101
+                    mediaType: movie
+                    title: Great watch
+                    body: This movie stayed sharp, focused, and worth revisiting.
+                    createdAt: '2026-04-26T18:30:00.000Z'
+                    updatedAt: '2026-04-26T18:30:00.000Z'
+                    author:
+                      id: 1
+                      username: reviews-int-owner
+        '400':
+          description: Invalid review payload
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiErrorResponse'
+              examples:
+                invalidTmdbId:
+                  value:
+                    error: tmdbId must be a positive integer
+                invalidBody:
+                  value:
+                    error: body must be between 10 and 5000 characters
+        '401':
+          $ref: '#/components/responses/UnauthorizedError'
+        '409':
+          description: Duplicate review for the same user and item
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiErrorResponse'
+              examples:
+                duplicate:
+                  value:
+                    error: You have already reviewed this item
+
+  /v1/reviews/{id}:
+    get:
+      tags: [Reviews]
+      summary: Get review by id
+      description: Returns one review by its internal id.
+      parameters:
+        - in: path
+          name: id
+          required: true
+          description: Positive review id.
+          schema:
+            type: integer
+            minimum: 1
+          example: 101
+      responses:
+        '200':
+          description: Review found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ReviewResponse'
+              examples:
+                success:
+                  value:
+                    id: 101
+                    mediaType: movie
+                    title: Great watch
+                    body: This movie stayed sharp, focused, and worth revisiting.
+                    createdAt: '2026-04-26T18:30:00.000Z'
+                    updatedAt: '2026-04-26T18:30:00.000Z'
+                    author:
+                      id: 1
+                      username: reviews-int-owner
+        '404':
+          description: Review not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiErrorResponse'
+              examples:
+                notFound:
+                  value:
+                    error: Review not found
+    put:
+      tags: [Reviews]
+      summary: Update review
+      description: Updates the title and body for a review owned by the authenticated user.
+      security:
+        - bearerAuth: []
+      parameters:
+        - in: path
+          name: id
+          required: true
+          description: Positive review id.
+          schema:
+            type: integer
+            minimum: 1
+          example: 101
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ReviewUpdateRequest'
+            examples:
+              success:
+                value:
+                  title: Great watch
+                  body: This movie stayed sharp, focused, and worth revisiting.
+      responses:
+        '200':
+          description: Review updated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ReviewResponse'
+        '400':
+          description: Invalid review payload
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiErrorResponse'
+              examples:
+                invalidBody:
+                  value:
+                    error: body must be between 10 and 5000 characters
+        '401':
+          $ref: '#/components/responses/UnauthorizedError'
+        '403':
+          $ref: '#/components/responses/ForbiddenError'
+        '404':
+          description: Review not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiErrorResponse'
+              examples:
+                notFound:
+                  value:
+                    error: Review not found
+    delete:
+      tags: [Reviews]
+      summary: Delete review
+      description: Deletes a review owned by the authenticated user or an admin.
+      security:
+        - bearerAuth: []
+      parameters:
+        - in: path
+          name: id
+          required: true
+          description: Positive review id.
+          schema:
+            type: integer
+            minimum: 1
+          example: 101
+      responses:
+        '204':
+          description: Review deleted
+        '401':
+          $ref: '#/components/responses/UnauthorizedError'
+        '403':
+          $ref: '#/components/responses/ForbiddenError'
+        '404':
+          description: Review not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiErrorResponse'
+              examples:
+                notFound:
+                  value:
+                    error: Review not found
+
+  /v1/ratings:
+    get:
+      tags: [Ratings]
+      summary: List ratings
+      description: Returns a paginated list of ratings. All filters are optional.
+      parameters:
+        - in: query
+          name: page
+          required: false
+          description: Page number. Defaults to 1.
+          schema:
+            type: integer
+            minimum: 1
+            default: 1
+          example: 1
+        - in: query
+          name: pageSize
+          required: false
+          description: Results per page. Defaults to 10, max 50.
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 50
+            default: 10
+          example: 10
+        - in: query
+          name: tmdbId
+          required: false
+          description: Filter by TMDB identifier.
+          schema:
+            type: integer
+            minimum: 1
+          example: 550
+        - in: query
+          name: mediaType
+          required: false
+          description: Filter by media type.
+          schema:
+            type: string
+            enum: [movie, show]
+          example: movie
+        - in: query
+          name: userId
+          required: false
+          description: Filter by author user ID.
+          schema:
+            type: integer
+            minimum: 1
+          example: 1
+      responses:
+        '200':
+          description: Paginated list of ratings
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RatingListResponse'
+              examples:
+                success:
+                  value:
+                    page: 1
+                    pageSize: 10
+                    totalPages: 1
+                    totalResults: 1
+                    results:
+                      - id: 1
+                        mediaType: movie
+                        score: 8
+                        createdAt: '2026-01-01T00:00:00.000Z'
+                        updatedAt: '2026-01-01T00:00:00.000Z'
+                        author:
+                          id: 1
+                          username: alice
+        '400':
+          description: Invalid query parameters
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiErrorResponse'
+              examples:
+                invalidPage:
+                  value:
+                    error: Query parameter page must be a positive integer
+                invalidPageSize:
+                  value:
+                    error: Query parameter pageSize must be 50 or less
+                invalidMediaType:
+                  value:
+                    error: Query parameter mediaType must be either movie or show
+
+    post:
+      tags: [Ratings]
+      summary: Create a rating
+      description: >
+        Submits a rating for a TMDB title. Requires authentication.
+        One rating per user per title — returns 409 if the user has already rated this item.
+        The author is always taken from the JWT; never send a userId in the body.
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RatingCreateRequest'
+            example:
+              tmdbId: 550
+              mediaType: movie
+              score: 8
+      responses:
+        '201':
+          description: Rating created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RatingResponse'
+              examples:
+                success:
+                  value:
+                    id: 1
+                    mediaType: movie
+                    score: 8
+                    createdAt: '2026-01-01T00:00:00.000Z'
+                    updatedAt: '2026-01-01T00:00:00.000Z'
+                    author:
+                      id: 1
+                      username: alice
+        '400':
+          description: Validation error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiErrorResponse'
+              examples:
+                invalidTmdbId:
+                  value:
+                    error: tmdbId must be a positive integer
+                invalidMediaType:
+                  value:
+                    error: mediaType must be either movie or show
+                invalidScore:
+                  value:
+                    error: score must be an integer between 1 and 10
+        '401':
+          $ref: '#/components/responses/UnauthorizedError'
+        '409':
+          description: User has already rated this item
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiErrorResponse'
+              examples:
+                duplicate:
+                  value:
+                    error: You have already rated this item
+
+  /v1/ratings/{id}:
+    get:
+      tags: [Ratings]
+      summary: Get a rating by ID
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: integer
+            minimum: 1
+          example: 1
+      responses:
+        '200':
+          description: Rating found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RatingResponse'
+              examples:
+                success:
+                  value:
+                    id: 1
+                    mediaType: movie
+                    score: 8
+                    createdAt: '2026-01-01T00:00:00.000Z'
+                    updatedAt: '2026-01-01T00:00:00.000Z'
+                    author:
+                      id: 1
+                      username: alice
+        '404':
+          description: Rating not found or invalid ID
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiErrorResponse'
+              examples:
+                notFound:
+                  value:
+                    error: Rating not found
+
+    put:
+      tags: [Ratings]
+      summary: Update a rating
+      description: Updates the score on a rating. Only the original author can update.
+      security:
+        - bearerAuth: []
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: integer
+            minimum: 1
+          example: 1
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RatingUpdateRequest'
+            example:
+              score: 9
+      responses:
+        '200':
+          description: Rating updated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RatingResponse'
+              examples:
+                success:
+                  value:
+                    id: 1
+                    mediaType: movie
+                    score: 9
+                    createdAt: '2026-01-01T00:00:00.000Z'
+                    updatedAt: '2026-01-02T00:00:00.000Z'
+                    author:
+                      id: 1
+                      username: alice
+        '400':
+          description: Invalid score
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiErrorResponse'
+              examples:
+                invalidScore:
+                  value:
+                    error: score must be an integer between 1 and 10
+        '401':
+          $ref: '#/components/responses/UnauthorizedError'
+        '403':
+          $ref: '#/components/responses/ForbiddenError'
+        '404':
+          description: Rating not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiErrorResponse'
+              examples:
+                notFound:
+                  value:
+                    error: Rating not found
+
+    delete:
+      tags: [Ratings]
+      summary: Delete a rating
+      description: Deletes a rating. Only the original author can delete their rating.
+      security:
+        - bearerAuth: []
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: integer
+            minimum: 1
+          example: 1
+      responses:
+        '204':
+          description: Rating deleted
+        '401':
+          $ref: '#/components/responses/UnauthorizedError'
+        '403':
+          $ref: '#/components/responses/ForbiddenError'
+        '404':
+          description: Rating not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiErrorResponse'
+              examples:
+                notFound:
+                  value:
+                    error: Rating not found
+
+  /v1/issues:
+    post:
+      tags: [Issues]
+      summary: Submit a bug report
+      description: >
+        Public endpoint — no authentication required.
+        Persists a bug report to the Issue table and returns the new issue ID and status.
+        Both title and description are required; reproductionSteps and reporterContact are optional.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/IssueCreateRequest'
+            examples:
+              minimal:
+                value:
+                  title: App crashes on login
+                  description: Clicking the login button causes a 500 error.
+              full:
+                value:
+                  title: App crashes on login
+                  description: Clicking the login button causes a 500 error.
+                  reproductionSteps: "1. Open the app\n2. Navigate to login\n3. Click the login button"
+                  reporterContact: reporter@example.com
+      responses:
+        '201':
+          description: Bug report created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/IssueResponse'
+              examples:
+                success:
+                  value:
+                    id: 1
+                    status: open
+                    createdAt: '2026-05-01T12:00:00.000Z'
+        '400':
+          description: Validation error — title or description missing, empty, or wrong type
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiErrorResponse'
+              examples:
+                missingTitle:
+                  value:
+                    error: title is required
+                missingDescription:
+                  value:
+                    error: description is required
+                badFieldType:
+                  value:
+                    error: reproductionSteps must be a string
+
 components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+      description: >
+        Auth2 OIDC bearer token. Obtain from the issuer configured in AUTH_ISSUER.
+        The token audience must match API_AUDIENCE (default: group-2-api).
+
+  responses:
+    UnauthorizedError:
+      description: Authentication required
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ApiErrorResponse'
+          examples:
+            missingToken:
+              value:
+                error: Missing or malformed Authorization header
+            invalidToken:
+              value:
+                error: Invalid or expired token
+    ForbiddenError:
+      description: Authenticated user does not have permission to modify this resource
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ApiErrorResponse'
+          examples:
+            forbidden:
+              value:
+                error: You do not have permission to modify this resource
+
   schemas:
+    MediaType:
+      type: string
+      enum: [movie, show]
+      example: movie
+
     ApiErrorResponse:
       type: object
       required:
@@ -816,6 +1155,119 @@ components:
         error:
           type: string
           example: Internal server error
+
+    UserContentAuthor:
+      type: object
+      required:
+        - id
+        - username
+      properties:
+        id:
+          type: integer
+          example: 1
+        username:
+          type: string
+          example: reviews-int-owner
+
+    ReviewResponse:
+      type: object
+      required:
+        - id
+        - mediaType
+        - title
+        - body
+        - createdAt
+        - updatedAt
+        - author
+      properties:
+        id:
+          type: integer
+          example: 101
+        mediaType:
+          $ref: '#/components/schemas/MediaType'
+        title:
+          type: string
+          nullable: true
+          example: Great watch
+        body:
+          type: string
+          example: This movie stayed sharp, focused, and worth revisiting.
+        createdAt:
+          type: string
+          format: date-time
+          example: '2026-04-26T18:30:00.000Z'
+        updatedAt:
+          type: string
+          format: date-time
+          example: '2026-04-26T18:30:00.000Z'
+        author:
+          $ref: '#/components/schemas/UserContentAuthor'
+
+    ReviewListResponse:
+      type: object
+      required:
+        - page
+        - pageSize
+        - totalPages
+        - totalResults
+        - results
+      properties:
+        page:
+          type: integer
+          example: 1
+        pageSize:
+          type: integer
+          example: 10
+        totalPages:
+          type: integer
+          example: 1
+        totalResults:
+          type: integer
+          example: 1
+        results:
+          type: array
+          items:
+            $ref: '#/components/schemas/ReviewResponse'
+
+    ReviewCreateRequest:
+      type: object
+      required:
+        - tmdbId
+        - mediaType
+        - body
+      properties:
+        tmdbId:
+          type: integer
+          minimum: 1
+          example: 550
+        mediaType:
+          $ref: '#/components/schemas/MediaType'
+        title:
+          type: string
+          nullable: true
+          maxLength: 120
+          example: Great watch
+        body:
+          type: string
+          minLength: 10
+          maxLength: 5000
+          example: This movie stayed sharp, focused, and worth revisiting.
+
+    ReviewUpdateRequest:
+      type: object
+      required:
+        - body
+      properties:
+        title:
+          type: string
+          nullable: true
+          maxLength: 120
+          example: Great watch
+        body:
+          type: string
+          minLength: 10
+          maxLength: 5000
+          example: This movie stayed sharp, focused, and worth revisiting.
 
     MediaListItem:
       type: object
@@ -846,9 +1298,7 @@ components:
           type: string
           example: An insomniac office worker crosses paths with a soap maker.
         mediaType:
-          type: string
-          enum: [movie, show]
-          example: movie
+          $ref: '#/components/schemas/MediaType'
 
     MediaListResponse:
       type: object
@@ -885,6 +1335,7 @@ components:
         - runtimeMinutes
         - status
         - rating
+        - community
       properties:
         id:
           type: integer
@@ -924,6 +1375,41 @@ components:
           type: number
           format: float
           example: 8.4
+        community:
+          $ref: '#/components/schemas/CommunitySummary'
+
+    CommunitySummary:
+      type: object
+      description: |
+        Local community ratings and reviews for a TMDB title. Returned as a sibling of TMDB fields
+        on movie and TV show detail responses.
+      required:
+        - averageScore
+        - ratingCount
+        - reviewCount
+        - recentReviews
+      properties:
+        averageScore:
+          type: number
+          format: float
+          nullable: true
+          description: Mean user rating score when at least one rating exists; null when there are no ratings.
+          example: 8.5
+        ratingCount:
+          type: integer
+          minimum: 0
+          description: Number of user ratings for this TMDB id and media type.
+          example: 14
+        reviewCount:
+          type: integer
+          minimum: 0
+          description: Total number of user reviews for this TMDB id and media type.
+          example: 5
+        recentReviews:
+          type: array
+          description: Most recent reviews, newest first (server limits length, typically three items).
+          items:
+            $ref: '#/components/schemas/ReviewResponse'
 
     ShowDetailResponse:
       type: object
@@ -939,6 +1425,7 @@ components:
         - episodeCount
         - status
         - rating
+        - community
       properties:
         id:
           type: integer
@@ -979,4 +1466,134 @@ components:
         rating:
           type: number
           format: float
+          description: TMDB vote average for the show.
           example: 8.9
+        community:
+          $ref: '#/components/schemas/CommunitySummary'
+
+    IssueCreateRequest:
+      type: object
+      required:
+        - title
+        - description
+      properties:
+        title:
+          type: string
+          example: App crashes on login
+        description:
+          type: string
+          example: Clicking the login button causes a 500 error.
+        reproductionSteps:
+          type: string
+          nullable: true
+          example: "1. Open app\n2. Click login"
+        reporterContact:
+          type: string
+          nullable: true
+          example: reporter@example.com
+
+    IssueResponse:
+      type: object
+      required:
+        - id
+        - status
+        - createdAt
+      properties:
+        id:
+          type: integer
+          example: 1
+        status:
+          type: string
+          enum: [open, in_progress, resolved, closed]
+          example: open
+        createdAt:
+          type: string
+          format: date-time
+          example: '2026-05-01T12:00:00.000Z'
+
+    RatingResponse:
+      type: object
+      required:
+        - id
+        - mediaType
+        - score
+        - createdAt
+        - updatedAt
+        - author
+      properties:
+        id:
+          type: integer
+          example: 1
+        mediaType:
+          $ref: '#/components/schemas/MediaType'
+        score:
+          type: integer
+          minimum: 1
+          maximum: 10
+          example: 8
+        createdAt:
+          type: string
+          format: date-time
+          example: '2026-01-01T00:00:00.000Z'
+        updatedAt:
+          type: string
+          format: date-time
+          example: '2026-01-01T00:00:00.000Z'
+        author:
+          $ref: '#/components/schemas/UserContentAuthor'
+
+    RatingListResponse:
+      type: object
+      required:
+        - page
+        - pageSize
+        - totalPages
+        - totalResults
+        - results
+      properties:
+        page:
+          type: integer
+          example: 1
+        pageSize:
+          type: integer
+          example: 10
+        totalPages:
+          type: integer
+          example: 1
+        totalResults:
+          type: integer
+          example: 1
+        results:
+          type: array
+          items:
+            $ref: '#/components/schemas/RatingResponse'
+
+    RatingCreateRequest:
+      type: object
+      required:
+        - tmdbId
+        - mediaType
+        - score
+      properties:
+        tmdbId:
+          type: integer
+          minimum: 1
+          example: 550
+        mediaType:
+          $ref: '#/components/schemas/MediaType'
+        score:
+          type: integer
+          minimum: 1
+          maximum: 10
+          example: 8
+
+    RatingUpdateRequest:
+      type: object
+      required:
+        - score
+      properties:
+        score:
+          type: integer
+          minimum: 1
+          maximum: 10
+          example: 9

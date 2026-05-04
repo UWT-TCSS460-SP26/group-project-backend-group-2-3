@@ -1,5 +1,5 @@
 import { Router } from 'express';
-import { getPopularTvShows, searchTvShows, tvShowDetails } from '../../controllers/v2/tv-shows';
+import { getPopularTvShows, searchTvShows, tvShowDetails } from '../../controllers/v1/tv-shows';
 
 const router = Router();
 

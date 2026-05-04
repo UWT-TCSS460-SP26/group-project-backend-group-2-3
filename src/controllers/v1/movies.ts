@@ -1,6 +1,7 @@
 import { Request, Response, NextFunction } from 'express';
 import { getTmdbConfig } from '../../config/env';
 import { HttpError } from '../../errors/http-error';
+import { getCommunitySummary, type CommunitySummary } from '../../services/community-summary';
 import { tmdbClient } from '../../services/tmdb-client';
 import { extractYear } from '../../utils/extract-year';
 import { buildTmdbImageUrl } from '../../utils/tmdb-image';
@@ -39,9 +40,11 @@ export const toMovieListResponse = (
 
 export const toMovieDetailResponse = (
   raw: TmdbMovieDetails,
-  imageBaseUrl: string
+  imageBaseUrl: string,
+  community: CommunitySummary
 ): MovieDetailResponse => ({
   backdropUrl: buildTmdbImageUrl(imageBaseUrl, raw.backdrop_path, 'w780'),
+  community,
   genres: raw.genres.map((genre) => genre.name),
   id: raw.id,
   overview: raw.overview,
@@ -59,13 +62,16 @@ export const searchMovies = async (
   next: NextFunction
 ): Promise<void> => {
   try {
-    const q = parseRequiredQueryString(request.query.q, 'Query parameter q is required');
+    const title = parseRequiredQueryString(
+      request.query.title,
+      'Query parameter title is required'
+    );
     const page = parseOptionalPositiveIntegerQuery(
       request.query.page,
       'Query parameter page must be a positive integer'
     );
     const { imageBaseUrl } = getTmdbConfig();
-    const data = await tmdbClient.searchMovies(q, page);
+    const data = await tmdbClient.searchMovies(title, page);
     response.json(toMovieListResponse(data, imageBaseUrl));
   } catch (error) {
     next(error);
@@ -104,7 +110,8 @@ export const getMovieDetails = async (
   try {
     const { imageBaseUrl } = getTmdbConfig();
     const movie = await tmdbClient.getMovieDetails(movieId);
-    response.status(200).json(toMovieDetailResponse(movie, imageBaseUrl));
+    const community = await getCommunitySummary(movieId, 'movie');
+    response.status(200).json(toMovieDetailResponse(movie, imageBaseUrl, community));
   } catch (error) {
     next(error);
   }

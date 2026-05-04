@@ -1,7 +1,16 @@
 import request from 'supertest';
 import { app } from '../src/app';
 import { HttpError } from '../src/errors/http-error';
+import * as communitySummaryService from '../src/services/community-summary';
 import { tmdbClient } from '../src/services/tmdb-client';
+import type { MediaDetailCommunity } from '../src/types/media';
+
+const emptyCommunity: MediaDetailCommunity = {
+  averageScore: null,
+  ratingCount: 0,
+  reviewCount: 0,
+  recentReviews: [],
+};
 
 describe('Show Detail Route', () => {
   const originalTmdbApiKey = process.env.TMDB_API_KEY;
@@ -23,7 +32,7 @@ describe('Show Detail Route', () => {
     jest.restoreAllMocks();
   });
 
-  it('GET /shows/:id — returns show details (200)', async () => {
+  it('GET /tv-shows/:id — returns show details (200)', async () => {
     const getShowDetailsSpy = jest.spyOn(tmdbClient, 'getShowDetails').mockResolvedValue({
       backdrop_path: '/backdrop.jpg',
       first_air_date: '2008-01-20',
@@ -37,12 +46,16 @@ describe('Show Detail Route', () => {
       status: 'Ended',
       vote_average: 8.9,
     });
+    const getCommunitySummarySpy = jest
+      .spyOn(communitySummaryService, 'getCommunitySummary')
+      .mockResolvedValue(emptyCommunity);
 
-    const response = await request(app).get('/shows/1396');
+    const response = await request(app).get('/tv-shows/1396');
 
     expect(response.status).toBe(200);
     expect(response.body).toEqual({
       backdropUrl: 'https://image.tmdb.org/t/p/w780/backdrop.jpg',
+      community: emptyCommunity,
       episodeCount: 62,
       genres: ['Drama'],
       id: 1396,
@@ -56,14 +69,15 @@ describe('Show Detail Route', () => {
     });
     expect(getShowDetailsSpy).toHaveBeenCalledTimes(1);
     expect(getShowDetailsSpy).toHaveBeenCalledWith(1396);
+    expect(getCommunitySummarySpy).toHaveBeenCalledWith(1396, 'show');
   });
 
-  it('GET /shows/:id — returns 404 for TMDB not found', async () => {
+  it('GET /tv-shows/:id — returns 404 for TMDB not found', async () => {
     const getShowDetailsSpy = jest
       .spyOn(tmdbClient, 'getShowDetails')
       .mockRejectedValue(new HttpError(404, 'The resource you requested could not be found.'));
 
-    const response = await request(app).get('/shows/999999');
+    const response = await request(app).get('/tv-shows/999999');
 
     expect(response.status).toBe(404);
     expect(response.body).toEqual({
@@ -73,12 +87,12 @@ describe('Show Detail Route', () => {
     expect(getShowDetailsSpy).toHaveBeenCalledWith(999999);
   });
 
-  it('GET /shows/:id — returns 502 for TMDB upstream failures', async () => {
+  it('GET /tv-shows/:id — returns 502 for TMDB upstream failures', async () => {
     const getShowDetailsSpy = jest
       .spyOn(tmdbClient, 'getShowDetails')
       .mockRejectedValue(new HttpError(502, 'TMDB request failed with status 500'));
 
-    const response = await request(app).get('/shows/1396');
+    const response = await request(app).get('/tv-shows/1396');
 
     expect(response.status).toBe(502);
     expect(response.body).toEqual({
@@ -88,12 +102,12 @@ describe('Show Detail Route', () => {
     expect(getShowDetailsSpy).toHaveBeenCalledWith(1396);
   });
 
-  it('GET /shows/:id — returns 502 when TMDB client throws a non-HTTP error', async () => {
+  it('GET /tv-shows/:id — returns 502 when TMDB client throws a non-HTTP error', async () => {
     const getShowDetailsSpy = jest
       .spyOn(tmdbClient, 'getShowDetails')
       .mockRejectedValue(new Error('fetch failed'));
 
-    const response = await request(app).get('/shows/1396');
+    const response = await request(app).get('/tv-shows/1396');
 
     expect(response.status).toBe(502);
     expect(response.body).toEqual({
@@ -103,9 +117,9 @@ describe('Show Detail Route', () => {
     expect(getShowDetailsSpy).toHaveBeenCalledWith(1396);
   });
 
-  it('GET /shows/:id — returns 404 for invalid id and does not call TMDB', async () => {
+  it('GET /tv-shows/:id — returns 404 for invalid id and does not call TMDB', async () => {
     const getShowDetailsSpy = jest.spyOn(tmdbClient, 'getShowDetails');
-    const response = await request(app).get('/shows/abc');
+    const response = await request(app).get('/tv-shows/abc');
 
     expect(response.status).toBe(404);
     expect(response.body).toEqual({

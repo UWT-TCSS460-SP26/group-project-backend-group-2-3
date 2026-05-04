@@ -1,8 +1,9 @@
+import type { CommunitySummary } from '../services/community-summary';
+
 export type MediaType = 'movie' | 'show';
 
-export interface ApiErrorResponse {
-  error: string;
-}
+/** Community ratings and reviews on a media detail response (shared by movie and TV detail routes). */
+export type MediaDetailCommunity = CommunitySummary;
 
 export interface MediaListItem {
   id: number;
@@ -22,6 +23,7 @@ export interface MediaListResponse {
 
 export interface MovieDetailResponse {
   backdropUrl: string | null;
+  community: MediaDetailCommunity;
   genres: string[];
   id: number;
   overview: string;
@@ -45,6 +47,7 @@ export interface ShowDetailResponse {
   status: string;
   title: string;
   year: number | null;
+  community: MediaDetailCommunity;
 }
 
 export interface TmdbGenre {
