@@ -171,3 +171,44 @@ The group finished setting initial team roles, communication expectations, meeti
 - Sprint 2 persistence scope is complete: users, ratings, reviews, dev JWT auth, owner/admin mutation checks, OpenAPI docs, and automated tests are integrated.
 - Remaining environment note: DB-backed Jest tests require `.env` to point at a reachable local PostgreSQL database. Jest now loads `.env` before tests so local runs use the configured database instead of falling back to a stale default port.
 - Fresh temporary database migration reset was not run in this session; migration status and seed were verified against the configured local database, and the full DB-backed test suite passed.
+
+## Sprint 3 Planning and Execution Notes (Apr 27 - May 3, 2026)
+
+### Sprint 3 ceremonies
+
+- Sprint planning sync was used to split Auth2, hosted database, public issues, community summary, enriched detail routes, tests, docs, and deployment work.
+- Mid-sprint checkpoints focused on merge order because Auth2, Prisma migration work, and enriched route work affected shared files.
+- Final integration review covered GitHub Actions, Render deployment, hosted PostgreSQL migrations, live public route smoke tests, and remaining release risks.
+
+### Sprint 3 task split
+
+- Rudolf owned shared Sprint 3 integration work, including Auth2/JWKS migration support, community summary support, CI fixes, hosted PostgreSQL deployment, Render configuration, and final integration gate.
+- Collins owned public bug-report issue route work and related documentation coverage.
+- Mani owned enriched movie detail work and movie community contract tests.
+- Jonathan owned enriched TV-show detail work and TV-show community contract tests.
+
+### Timeline and dependency flow
+
+- Early sprint: v2 behavior was promoted into v1 and the old v2 surface was removed so all Sprint 3 work targeted the final v1 API.
+- Mid sprint: Auth2 middleware, local user identity mapping, Prisma migration updates, public issue submission, and community summary logic landed.
+- Late sprint: enriched movie and TV-show detail routes, contract tests, README/OpenAPI updates, and GitHub Actions database setup were integrated.
+- Final sprint window: dev was merged into main, Render deployed main, Prisma migrations were applied against hosted Postgres, and live public endpoints were smoke tested.
+
+### Final release checklist
+
+- Production URL: `https://group-2-9289.onrender.com/`
+- Render build command: `npm ci --include=dev && npx prisma generate && npx prisma migrate deploy && npm run build`
+- Render start command: `npm start`
+- Hosted PostgreSQL migration status: all three committed Prisma migrations applied successfully in production.
+- Build: `npm run build` passed.
+- Lint: `npm run lint` passed.
+- Formatting: `npm run format:check` passed.
+- Prisma schema: `npx prisma validate` passed.
+- GitHub Actions: CI runs with a temporary Postgres service, Prisma Client generation, migration deployment, format check, lint, build, and tests.
+- Live smoke checks: `/health` returned 200, `/openapi.json` returned Sprint 3 API version `3.0.0`, and `/v1/movies/popular` returned live TMDB data.
+
+### Final outcome and risks
+
+- Go/no-go decision: go for Sprint 3 turn-in after the final Auth2 token smoke test is recorded.
+- Sprint 3 production scope is complete: Auth2/JWKS middleware, local Auth2 subject mapping, hosted Postgres, public issue submission, enriched movie and TV-show detail responses, OpenAPI docs, CI, and Render deployment are integrated on main.
+- Remaining operational note: protected deployed routes require a real Auth2 access token for `API_AUDIENCE=group-2-api`; access tokens expire and should be refreshed from the TCSS 460 Token Playground for manual smoke tests.

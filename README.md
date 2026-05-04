@@ -24,7 +24,7 @@ Copy `.env.example` to `.env` for local development and fill in:
 
 - `TMDB_API_KEY` for Sprint 1 TMDB proxy routes.
 - `DATABASE_URL` for the local PostgreSQL database used by Prisma.
-- `AUTH_ISSUER` and `API_AUDIENCE` for Auth2 bearer token verification.
+- `AUTH_ISSUER` and `API_AUDIENCE=group-2-api` for Auth2 bearer token verification.
 - `CORS_ALLOWED_ORIGINS` as a comma-separated list of browser origins allowed to call the API.
 
 ## Sprint 2 Database Setup
@@ -83,3 +83,7 @@ The project now uses v1 as the single active API surface:
 ## Deployed URL
 
 `https://group-2-9289.onrender.com/`
+
+Production deployment runs on Render with a hosted PostgreSQL database. The Render build command
+installs dependencies, generates Prisma Client, applies committed migrations with
+`npx prisma migrate deploy`, and compiles TypeScript before starting the API with `npm start`.
