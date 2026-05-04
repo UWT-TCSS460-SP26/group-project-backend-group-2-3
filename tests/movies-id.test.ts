@@ -25,7 +25,7 @@ describe('Movie Detail Route', () => {
     jest.restoreAllMocks();
   });
 
-  it('GET /movies/:id — returns movie details (200)', async () => {
+  it('GET /v1/movies/:id — returns movie details with populated community data (200)', async () => {
     const getMovieDetailsSpy = jest.spyOn(tmdbClient, 'getMovieDetails').mockResolvedValue({
       backdrop_path: '/backdrop.jpg',
       genres: [{ id: 18, name: 'Drama' }],
@@ -64,7 +64,7 @@ describe('Movie Detail Route', () => {
         ],
       });
 
-    const response = await request(app).get('/movies/550');
+    const response = await request(app).get('/v1/movies/550');
 
     expect(response.status).toBe(200);
     expect(response.body).toEqual({
@@ -108,7 +108,7 @@ describe('Movie Detail Route', () => {
     expect(getCommunitySummarySpy).toHaveBeenCalledWith(550, 'movie');
   });
 
-  it('GET /movies/:id — returns zero-data community shape when there are no local ratings or reviews', async () => {
+  it('GET /v1/movies/:id — returns zero-data community shape when there are no local ratings or reviews', async () => {
     jest.spyOn(tmdbClient, 'getMovieDetails').mockResolvedValue({
       backdrop_path: '/backdrop.jpg',
       genres: [{ id: 18, name: 'Drama' }],
@@ -128,7 +128,7 @@ describe('Movie Detail Route', () => {
       recentReviews: [],
     });
 
-    const response = await request(app).get('/movies/550');
+    const response = await request(app).get('/v1/movies/550');
 
     expect(response.status).toBe(200);
     expect(response.body.community).toEqual({
@@ -139,13 +139,13 @@ describe('Movie Detail Route', () => {
     });
   });
 
-  it('GET /movies/:id — returns 404 for TMDB not found', async () => {
+  it('GET /v1/movies/:id — returns 404 for TMDB not found', async () => {
     const getMovieDetailsSpy = jest
       .spyOn(tmdbClient, 'getMovieDetails')
       .mockRejectedValue(new HttpError(404, 'The resource you requested could not be found.'));
     const getCommunitySummarySpy = jest.spyOn(communitySummaryService, 'getCommunitySummary');
 
-    const response = await request(app).get('/movies/999999');
+    const response = await request(app).get('/v1/movies/999999');
 
     expect(response.status).toBe(404);
     expect(response.body).toEqual({
@@ -156,13 +156,13 @@ describe('Movie Detail Route', () => {
     expect(getCommunitySummarySpy).not.toHaveBeenCalled();
   });
 
-  it('GET /movies/:id — returns 502 for TMDB upstream failures', async () => {
+  it('GET /v1/movies/:id — returns 502 for TMDB upstream failures', async () => {
     const getMovieDetailsSpy = jest
       .spyOn(tmdbClient, 'getMovieDetails')
       .mockRejectedValue(new HttpError(502, 'TMDB request failed with status 500'));
     const getCommunitySummarySpy = jest.spyOn(communitySummaryService, 'getCommunitySummary');
 
-    const response = await request(app).get('/movies/550');
+    const response = await request(app).get('/v1/movies/550');
 
     expect(response.status).toBe(502);
     expect(response.body).toEqual({
@@ -173,10 +173,10 @@ describe('Movie Detail Route', () => {
     expect(getCommunitySummarySpy).not.toHaveBeenCalled();
   });
 
-  it('GET /movies/:id — returns 404 for invalid id and does not call TMDB', async () => {
+  it('GET /v1/movies/:id — returns 404 for invalid id and does not call TMDB or community aggregation', async () => {
     const getMovieDetailsSpy = jest.spyOn(tmdbClient, 'getMovieDetails');
     const getCommunitySummarySpy = jest.spyOn(communitySummaryService, 'getCommunitySummary');
-    const response = await request(app).get('/movies/abc');
+    const response = await request(app).get('/v1/movies/abc');
 
     expect(response.status).toBe(404);
     expect(response.body).toEqual({
