@@ -48,6 +48,27 @@ the updated `prisma/schema.prisma` plus the generated `prisma/migrations/...` fo
 changes, update `prisma/seed.ts` and rerun `npx prisma db seed`; the seed script should remain safe
 to run more than once on a teammate's local database.
 
+## Running the Tests
+
+The test suite needs a local PostgreSQL database. The fastest way to get one is via Docker:
+
+```bash
+# 1. Install dependencies
+npm install
+
+# 2. Start a local Postgres (Docker required — runs on port 5433)
+docker compose up -d
+
+# 3. Apply migrations and generate the Prisma client
+npx prisma migrate deploy
+npx prisma generate
+
+# 4. Run the tests
+npm test
+```
+
+Tests fall back to sensible defaults via `tests/setup.ts`, so a `.env` file is not required just to run them. If you already have your own Postgres running, set `DATABASE_URL` in `.env` to point at it instead of using `docker compose`.
+
 ## Route and Controller Layout
 
 The project now uses v1 as the single active API surface:
