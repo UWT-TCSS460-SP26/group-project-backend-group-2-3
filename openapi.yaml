@@ -1105,6 +1105,161 @@ paths:
                 badFieldType:
                   value:
                     error: reproductionSteps must be a string
+    get:
+      tags: [Issues]
+      summary: List bug reports (admin)
+      description: >
+        Admin-gated paginated queue of bug reports. Requires an Auth² bearer token whose role
+        is Admin or higher (Admin, SuperAdmin, Owner). User and Moderator tokens receive 403.
+        Defaults: `page=1`, `pageSize=10` (max `50`), `sort=createdAt:desc`. Optional `status`
+        filter restricts results to one IssueStatus value.
+      security:
+        - bearerAuth: []
+      parameters:
+        - in: query
+          name: page
+          required: false
+          description: 1-indexed page number. Defaults to 1.
+          schema:
+            type: integer
+            minimum: 1
+            default: 1
+          example: 1
+        - in: query
+          name: pageSize
+          required: false
+          description: Page size. Defaults to 10. Maximum 50.
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 50
+            default: 10
+          example: 10
+        - in: query
+          name: status
+          required: false
+          description: Optional IssueStatus filter.
+          schema:
+            type: string
+            enum: [open, in_progress, resolved, closed]
+          example: open
+        - in: query
+          name: sort
+          required: false
+          description: Sort order. Defaults to `createdAt:desc`.
+          schema:
+            type: string
+            enum: [createdAt:desc, createdAt:asc]
+            default: createdAt:desc
+          example: createdAt:desc
+      responses:
+        '200':
+          description: Paginated list of bug reports
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/IssueAdminListResponse'
+              examples:
+                success:
+                  value:
+                    page: 1
+                    pageSize: 10
+                    totalPages: 1
+                    totalResults: 1
+                    results:
+                      - id: 1
+                        title: App crashes on login
+                        description: Clicking the login button causes a 500 error.
+                        reproductionSteps: "1. Open the app\n2. Navigate to login\n3. Click the login button"
+                        reporterContact: reporter@example.com
+                        status: open
+                        createdAt: '2026-05-01T12:00:00.000Z'
+                        updatedAt: '2026-05-01T12:00:00.000Z'
+        '400':
+          description: Invalid query parameter
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiErrorResponse'
+              examples:
+                invalidStatus:
+                  value:
+                    error: 'Query parameter status must be one of: open, in_progress, resolved, closed'
+                invalidSort:
+                  value:
+                    error: 'Query parameter sort must be one of: createdAt:desc, createdAt:asc'
+                invalidPageSize:
+                  value:
+                    error: Query parameter pageSize must be 50 or less
+        '401':
+          $ref: '#/components/responses/UnauthorizedError'
+        '403':
+          $ref: '#/components/responses/ForbiddenError'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+  /v1/issues/{id}:
+    get:
+      tags: [Issues]
+      summary: Get bug report by id (admin)
+      description: >
+        Admin-gated lookup for a single bug report. Requires an Auth² bearer token with role
+        Admin or higher (Admin, SuperAdmin, Owner).
+      security:
+        - bearerAuth: []
+      parameters:
+        - in: path
+          name: id
+          required: true
+          description: Positive issue id.
+          schema:
+            type: integer
+            minimum: 1
+          example: 1
+      responses:
+        '200':
+          description: Bug report found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/IssueAdminResponse'
+              examples:
+                success:
+                  value:
+                    id: 1
+                    title: App crashes on login
+                    description: Clicking the login button causes a 500 error.
+                    reproductionSteps: "1. Open the app\n2. Navigate to login\n3. Click the login button"
+                    reporterContact: reporter@example.com
+                    status: open
+                    createdAt: '2026-05-01T12:00:00.000Z'
+                    updatedAt: '2026-05-01T12:00:00.000Z'
+        '400':
+          description: Invalid path id
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiErrorResponse'
+              examples:
+                invalidId:
+                  value:
+                    error: Issue id must be a positive integer
+        '401':
+          $ref: '#/components/responses/UnauthorizedError'
+        '403':
+          $ref: '#/components/responses/ForbiddenError'
+        '404':
+          description: Issue not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiErrorResponse'
+              examples:
+                notFound:
+                  value:
+                    error: Issue not found
+        '500':
+          $ref: '#/components/responses/InternalServerError'
 
 components:
   securitySchemes:
@@ -1141,6 +1296,19 @@ components:
             forbidden:
               value:
                 error: You do not have permission to modify this resource
+            insufficientPermissions:
+              value:
+                error: Insufficient permissions
+    InternalServerError:
+      description: Unexpected server error
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ApiErrorResponse'
+          examples:
+            generic:
+              value:
+                error: Internal server error
 
   schemas:
     MediaType:
@@ -1511,6 +1679,74 @@ components:
           type: string
           format: date-time
           example: '2026-05-01T12:00:00.000Z'
+
+    IssueAdminResponse:
+      type: object
+      required:
+        - id
+        - title
+        - description
+        - reproductionSteps
+        - reporterContact
+        - status
+        - createdAt
+        - updatedAt
+      properties:
+        id:
+          type: integer
+          example: 1
+        title:
+          type: string
+          example: App crashes on login
+        description:
+          type: string
+          example: Clicking the login button causes a 500 error.
+        reproductionSteps:
+          type: string
+          nullable: true
+          example: "1. Open the app\n2. Navigate to login\n3. Click the login button"
+        reporterContact:
+          type: string
+          nullable: true
+          example: reporter@example.com
+        status:
+          type: string
+          enum: [open, in_progress, resolved, closed]
+          example: open
+        createdAt:
+          type: string
+          format: date-time
+          example: '2026-05-01T12:00:00.000Z'
+        updatedAt:
+          type: string
+          format: date-time
+          example: '2026-05-01T12:00:00.000Z'
+
+    IssueAdminListResponse:
+      type: object
+      required:
+        - page
+        - pageSize
+        - totalPages
+        - totalResults
+        - results
+      properties:
+        page:
+          type: integer
+          example: 1
+        pageSize:
+          type: integer
+          example: 10
+        totalPages:
+          type: integer
+          example: 1
+        totalResults:
+          type: integer
+          example: 1
+        results:
+          type: array
+          items:
+            $ref: '#/components/schemas/IssueAdminResponse'
 
     RatingResponse:
       type: object
