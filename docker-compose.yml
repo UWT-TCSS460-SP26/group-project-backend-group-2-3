@@ -3,7 +3,7 @@ services:
     image: postgres:16
     container_name: tcss460-group-2-postgres
     ports:
-      - "5433:5432"
+      - '5433:5432'
     environment:
       POSTGRES_USER: postgres
       POSTGRES_PASSWORD: password
