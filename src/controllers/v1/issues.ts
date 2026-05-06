@@ -197,3 +197,89 @@ export const getIssueById = async (
     next(error);
   }
 };
+
+interface IssueUpdatePayload {
+  status?: unknown;
+}
+
+/**
+ * Admin-gated partial-merge update. Currently only `status` is mutable; an
+ * empty body returns the unchanged issue with 200. Unknown status values are
+ * rejected with 400.
+ */
+export const updateIssue = async (
+  request: Request,
+  response: Response,
+  next: NextFunction
+): Promise<void> => {
+  const issueId = parsePositiveIntegerPathParam(request.params.id);
+  if (issueId === null) {
+    next(new HttpError(HTTP_STATUS.badRequest, 'Issue id must be a positive integer'));
+    return;
+  }
+
+  try {
+    const payload = (request.body ?? {}) as IssueUpdatePayload;
+    const data: Prisma.IssueUpdateInput = {};
+
+    if (payload.status !== undefined) {
+      if (!isIssueStatus(payload.status)) {
+        next(
+          new HttpError(
+            HTTP_STATUS.badRequest,
+            `status must be one of: ${ISSUE_STATUS_VALUES.join(', ')}`
+          )
+        );
+        return;
+      }
+      data.status = payload.status;
+    }
+
+    const existing = await prisma.issue.findUnique({ where: { id: issueId } });
+    if (!existing) {
+      next(new HttpError(HTTP_STATUS.notFound, 'Issue not found'));
+      return;
+    }
+
+    const issue =
+      Object.keys(data).length === 0
+        ? existing
+        : await prisma.issue.update({ where: { id: issueId }, data });
+
+    response.status(200).json(toIssueResponse(issue));
+  } catch (error) {
+    next(error);
+  }
+};
+
+/**
+ * Admin-gated delete. Returns 204 on success and 404 when the row does not exist.
+ */
+export const deleteIssue = async (
+  request: Request,
+  response: Response,
+  next: NextFunction
+): Promise<void> => {
+  const issueId = parsePositiveIntegerPathParam(request.params.id);
+  if (issueId === null) {
+    next(new HttpError(HTTP_STATUS.badRequest, 'Issue id must be a positive integer'));
+    return;
+  }
+
+  try {
+    const existing = await prisma.issue.findUnique({
+      where: { id: issueId },
+      select: { id: true },
+    });
+
+    if (!existing) {
+      next(new HttpError(HTTP_STATUS.notFound, 'Issue not found'));
+      return;
+    }
+
+    await prisma.issue.delete({ where: { id: issueId } });
+    response.status(204).send();
+  } catch (error) {
+    next(error);
+  }
+};

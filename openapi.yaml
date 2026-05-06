@@ -1260,6 +1260,134 @@ paths:
                     error: Issue not found
         '500':
           $ref: '#/components/responses/InternalServerError'
+    patch:
+      tags: [Issues]
+      summary: Update bug report (admin)
+      description: >
+        Admin-gated partial-merge update for a bug report. Currently only the
+        `status` field is mutable. Send a partial body — fields that are omitted
+        are left unchanged. An empty body returns the unchanged issue with 200.
+        Unknown `status` values are rejected with 400.
+        Requires an Auth² bearer token with role Admin or higher.
+      security:
+        - bearerAuth: []
+      parameters:
+        - in: path
+          name: id
+          required: true
+          description: Positive issue id.
+          schema:
+            type: integer
+            minimum: 1
+          example: 1
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/IssueUpdateRequest'
+            examples:
+              statusToInProgress:
+                value:
+                  status: in_progress
+              statusToResolved:
+                value:
+                  status: resolved
+              emptyBody:
+                value: {}
+      responses:
+        '200':
+          description: Updated issue (or unchanged issue when body is empty)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/IssueAdminResponse'
+              examples:
+                success:
+                  value:
+                    id: 1
+                    title: App crashes on login
+                    description: Clicking the login button causes a 500 error.
+                    reproductionSteps: "1. Open the app\n2. Navigate to login\n3. Click the login button"
+                    reporterContact: reporter@example.com
+                    status: in_progress
+                    createdAt: '2026-05-01T12:00:00.000Z'
+                    updatedAt: '2026-05-02T09:15:00.000Z'
+        '400':
+          description: Invalid path id or invalid status value
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiErrorResponse'
+              examples:
+                invalidId:
+                  value:
+                    error: Issue id must be a positive integer
+                invalidStatus:
+                  value:
+                    error: 'status must be one of: open, in_progress, resolved, closed'
+        '401':
+          $ref: '#/components/responses/UnauthorizedError'
+        '403':
+          $ref: '#/components/responses/ForbiddenError'
+        '404':
+          description: Issue not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiErrorResponse'
+              examples:
+                notFound:
+                  value:
+                    error: Issue not found
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+    delete:
+      tags: [Issues]
+      summary: Delete bug report (admin)
+      description: >
+        Admin-gated delete for a bug report. Returns 204 with an empty body on
+        success. Requires an Auth² bearer token with role Admin or higher.
+      security:
+        - bearerAuth: []
+      parameters:
+        - in: path
+          name: id
+          required: true
+          description: Positive issue id.
+          schema:
+            type: integer
+            minimum: 1
+          example: 1
+      responses:
+        '204':
+          description: Issue deleted
+        '400':
+          description: Invalid path id
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiErrorResponse'
+              examples:
+                invalidId:
+                  value:
+                    error: Issue id must be a positive integer
+        '401':
+          $ref: '#/components/responses/UnauthorizedError'
+        '403':
+          $ref: '#/components/responses/ForbiddenError'
+        '404':
+          description: Issue not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiErrorResponse'
+              examples:
+                notFound:
+                  value:
+                    error: Issue not found
+        '500':
+          $ref: '#/components/responses/InternalServerError'
 
 components:
   securitySchemes:
@@ -1747,6 +1875,17 @@ components:
           type: array
           items:
             $ref: '#/components/schemas/IssueAdminResponse'
+
+    IssueUpdateRequest:
+      type: object
+      description: >
+        Partial-merge update payload. Fields that are omitted are left unchanged.
+        An empty body is valid and returns the unchanged issue with 200.
+      properties:
+        status:
+          type: string
+          enum: [open, in_progress, resolved, closed]
+          example: in_progress
 
     RatingResponse:
       type: object
