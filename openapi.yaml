@@ -1,12 +1,22 @@
 openapi: 3.0.3
 info:
   title: Group 2 Movie and TV Review API
-  version: 3.0.0
+  version: 4.0.0
   description: |
-    Sprint 3 backend API for TCSS 460 Group 2.
+    Sprint 4 backend API for TCSS 460 Group 2.
     Proxies TMDB for media data and persists user ratings, reviews, and bug reports via PostgreSQL.
     Versioned resources are documented under `/v1/...`; `/api/v1/...` remains supported as a compatibility alias.
-    All mutation routes require an Auth2 OIDC bearer token. Public routes (health, issues, media reads) do not.
+
+    ## Authentication
+
+    Mutation routes and admin routes require an Auth² OIDC bearer token.
+    - **Issuer:** `https://tcss-460-iam.onrender.com` (Auth²)
+    - **Audience:** `group-2-api`
+    - **Algorithm:** `RS256`, validated against the issuer's JWKS
+    - **How to mint a token:** the TCSS 460 Auth² Token Playground at the issuer URL above
+
+    Pass tokens as `Authorization: Bearer <token>`. Public routes (health, TMDB proxy reads,
+    public `GET` ratings/reviews, public `POST /v1/issues`) do not require a token.
 
 servers:
   - url: https://group-2-9289.onrender.com
@@ -1395,10 +1405,19 @@ components:
       type: http
       scheme: bearer
       bearerFormat: JWT
-      description: >
-        Auth² OIDC bearer token. Issued by Auth² at https://tcss-460-iam.onrender.com.
-        Token audience must be group-2-api. Obtain a token from the TCSS 460 Token Playground,
-        then pass it as Authorization: Bearer <token>.
+      description: |
+        Auth² OIDC bearer token (RS256, validated against the issuer JWKS).
+
+        | Field    | Value                                |
+        |----------|--------------------------------------|
+        | Issuer   | `https://tcss-460-iam.onrender.com`  |
+        | Audience | `group-2-api`                        |
+
+        Obtain a token from the TCSS 460 Auth² Token Playground at the issuer URL,
+        then pass it as `Authorization: Bearer <token>`.
+
+        Tokens whose `iss` does not match the issuer above, or whose `aud` does not
+        contain `group-2-api`, are rejected with 401.
 
   responses:
     UnauthorizedError:
