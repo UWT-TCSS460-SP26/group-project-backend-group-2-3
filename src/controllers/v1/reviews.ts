@@ -29,6 +29,31 @@ interface ReviewUpdatePayload {
   body?: unknown;
 }
 
+const VALID_SORT_VALUES = ['createdAt:desc', 'createdAt:asc'] as const;
+type ReviewSortValue = (typeof VALID_SORT_VALUES)[number];
+
+const getSingleQueryValue = (rawValue: unknown): unknown =>
+  Array.isArray(rawValue) ? rawValue[0] : rawValue;
+
+const isReviewSortValue = (value: unknown): value is ReviewSortValue =>
+  typeof value === 'string' && (VALID_SORT_VALUES as readonly string[]).includes(value);
+
+const parseOptionalSortQuery = (rawValue: unknown): ReviewSortValue => {
+  const value = getSingleQueryValue(rawValue);
+  if (value === undefined) {
+    return 'createdAt:desc';
+  }
+
+  if (!isReviewSortValue(value)) {
+    throw new HttpError(
+      HTTP_STATUS.badRequest,
+      `Query parameter sort must be one of: ${VALID_SORT_VALUES.join(', ')}`
+    );
+  }
+
+  return value;
+};
+
 const isMediaType = (value: unknown): value is MediaType => value === 'movie' || value === 'show';
 
 const parseMediaTypeField = (rawValue: unknown): MediaType => {
@@ -183,6 +208,51 @@ export const listReviews = async (
         where,
         include: userContentAuthorInclude,
         orderBy: [{ createdAt: 'desc' }, { id: 'desc' }],
+        skip,
+        take,
+      }),
+    ]);
+
+    response.status(200).json(
+      toPaginatedResponse({
+        page,
+        pageSize,
+        totalResults,
+        results: reviews.map((review) => toReviewResponse(review)),
+      })
+    );
+  } catch (error) {
+    next(error);
+  }
+};
+
+export const listMyReviews = async (
+  request: Request,
+  response: Response,
+  next: NextFunction
+): Promise<void> => {
+  if (!request.user) {
+    next(new HttpError(HTTP_STATUS.unauthorized, 'Not authenticated'));
+    return;
+  }
+
+  try {
+    const query = request.query as Record<string, unknown>;
+    const { page, pageSize, skip, take } = parsePaginationQuery(query);
+    const sort = parseOptionalSortQuery(query.sort);
+    const localUser = await resolveLocalUser(request);
+    const direction: Prisma.SortOrder = sort === 'createdAt:asc' ? 'asc' : 'desc';
+
+    const where: Prisma.ReviewWhereInput = {
+      userId: localUser.id,
+    };
+
+    const [totalResults, reviews] = await prisma.$transaction([
+      prisma.review.count({ where }),
+      prisma.review.findMany({
+        where,
+        include: userContentAuthorInclude,
+        orderBy: [{ createdAt: direction }, { id: direction }],
         skip,
         take,
       }),
