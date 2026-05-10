@@ -28,6 +28,8 @@ tags:
     description: User review routes for movies and shows
   - name: Issues
     description: Public bug report intake — no authentication required
+  - name: Me
+    description: Authenticated user's own content (ratings, future reviews)
 
 paths:
   /health:
@@ -1075,6 +1077,92 @@ paths:
                   value:
                     error: reproductionSteps must be a string
 
+  /v1/me/ratings:
+    get:
+      tags: [Me]
+      summary: List my ratings
+      description: >
+        Returns a paginated list of the authenticated user's ratings, each enriched with TMDB metadata.
+        The caller is always determined from the JWT — query parameters cannot override identity.
+        If TMDB is unavailable for a given item, the `tmdb` field is `null` rather than failing the whole request.
+      security:
+        - bearerAuth: []
+      parameters:
+        - in: query
+          name: page
+          required: false
+          description: Page number (positive integer). Defaults to 1.
+          schema:
+            type: integer
+            minimum: 1
+            default: 1
+          example: 1
+        - in: query
+          name: pageSize
+          required: false
+          description: Number of results per page (max 50). Defaults to 10.
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 50
+            default: 10
+          example: 10
+      responses:
+        '200':
+          description: Paginated list of enriched ratings
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EnrichedRatingListResponse'
+              examples:
+                success:
+                  value:
+                    page: 1
+                    pageSize: 10
+                    totalPages: 1
+                    totalResults: 1
+                    results:
+                      - id: 1
+                        tmdbId: 550
+                        mediaType: movie
+                        score: 8
+                        createdAt: '2026-01-01T00:00:00.000Z'
+                        updatedAt: '2026-01-01T00:00:00.000Z'
+                        author:
+                          id: 1
+                          username: alice
+                        tmdb:
+                          title: Fight Club
+                          year: 1999
+                          posterUrl: https://image.tmdb.org/t/p/w500/poster.jpg
+                          overview: An insomniac office worker crosses paths with a soap maker.
+                tmdbUnavailable:
+                  summary: TMDB upstream failure — tmdb is null
+                  value:
+                    page: 1
+                    pageSize: 10
+                    totalPages: 1
+                    totalResults: 1
+                    results:
+                      - id: 1
+                        tmdbId: 550
+                        mediaType: movie
+                        score: 8
+                        createdAt: '2026-01-01T00:00:00.000Z'
+                        updatedAt: '2026-01-01T00:00:00.000Z'
+                        author:
+                          id: 1
+                          username: alice
+                        tmdb: null
+        '401':
+          $ref: '#/components/responses/UnauthorizedError'
+        '500':
+          description: Unexpected server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiErrorResponse'
+
 components:
   securitySchemes:
     bearerAuth:
@@ -1556,3 +1644,70 @@ components:
           minimum: 1
           maximum: 10
           example: 9
+
+    TmdbMeta:
+      type: object
+      nullable: true
+      required:
+        - title
+        - year
+        - posterUrl
+        - overview
+      properties:
+        title:
+          type: string
+          example: Fight Club
+        year:
+          type: integer
+          nullable: true
+          example: 1999
+        posterUrl:
+          type: string
+          nullable: true
+          example: https://image.tmdb.org/t/p/w500/poster.jpg
+        overview:
+          type: string
+          example: An insomniac office worker crosses paths with a soap maker.
+
+    EnrichedRatingResponse:
+      allOf:
+        - $ref: '#/components/schemas/RatingResponse'
+        - type: object
+          required:
+            - tmdbId
+            - tmdb
+          properties:
+            tmdbId:
+              type: integer
+              example: 550
+            tmdb:
+              nullable: true
+              oneOf:
+                - $ref: '#/components/schemas/TmdbMeta'
+                - type: 'null'
+
+    EnrichedRatingListResponse:
+      type: object
+      required:
+        - page
+        - pageSize
+        - totalPages
+        - totalResults
+        - results
+      properties:
+        page:
+          type: integer
+          example: 1
+        pageSize:
+          type: integer
+          example: 10
+        totalPages:
+          type: integer
+          example: 1
+        totalResults:
+          type: integer
+          example: 1
+        results:
+          type: array
+          items:
+            $ref: '#/components/schemas/EnrichedRatingResponse'
