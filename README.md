@@ -8,6 +8,7 @@ Express and TypeScript API for the Movie and TV Review Platform group project.
 - API docs: `GET /api-docs`
 - Versioned API base: `/v1/*` (also accessible as `/api/v1/*` and `/*`)
 - Bug reports: `POST /v1/issues` (public — no auth required)
+- Discovery feed: `GET /v1/discover/top-rated` (public)
 
 Local docs are available at [http://localhost:3000/api-docs](http://localhost:3000/api-docs).
 
@@ -116,6 +117,18 @@ The project now uses v1 as the single active API surface:
 - `src/controllers/v1/*.ts` is used where handlers are split from routes.
 - Movie search uses `GET /v1/movies/search?title=...`.
 - TV-show routes use `/v1/tv-shows`.
+
+## Sprint 4 Discovery Route
+
+Sprint 4 ships `GET /v1/discover/top-rated` as the required combined discovery route. We did not
+add `/v1/discover/most-reviewed` in this sprint.
+
+The route aggregates rankings in PostgreSQL first, then fetches TMDB metadata live per request
+with one TMDB detail call per ranked item on the current page. Missing or temporarily unavailable
+TMDB items are skipped with a warning log instead of failing the whole response.
+
+This is intentionally a live-per-request strategy for Sprint 4. TODO: revisit caching or a
+materialized view if page latency becomes too high under real usage.
 
 ## Shared Contracts
 

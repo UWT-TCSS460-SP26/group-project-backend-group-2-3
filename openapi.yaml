@@ -33,6 +33,8 @@ tags:
     description: Movie routes proxied from TMDB
   - name: TV Shows
     description: TV show routes proxied from TMDB
+  - name: Discover
+    description: Public community discovery feeds built from SQL aggregates plus TMDB metadata
   - name: Ratings
     description: User ratings for movies and TV shows
   - name: Reviews
@@ -63,6 +65,75 @@ paths:
                   service:
                     type: string
                     example: group-project-backend-group-2-3
+
+  /v1/discover/top-rated:
+    get:
+      tags: [Discover]
+      summary: List top-rated community picks
+      description: Returns a public discovery feed ranked by average local rating, using a SQL aggregate over local ratings and live TMDB metadata enrichment for each item on the current page.
+      parameters:
+        - in: query
+          name: page
+          required: false
+          description: Positive integer page number. Defaults to 1.
+          schema:
+            type: integer
+            minimum: 1
+            default: 1
+          example: 1
+        - in: query
+          name: pageSize
+          required: false
+          description: Positive integer page size up to 50. Defaults to 10.
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 50
+            default: 10
+          example: 10
+      responses:
+        '200':
+          description: Paginated list of top-rated community-ranked items
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DiscoverFeedResponse'
+              examples:
+                success:
+                  value:
+                    page: 1
+                    pageSize: 2
+                    totalPages: 1
+                    totalResults: 2
+                    results:
+                      - tmdbId: 550
+                        mediaType: movie
+                        averageScore: 9.5
+                        ratingCount: 4
+                        tmdb:
+                          title: Fight Club
+                          year: 1999
+                          overview: An insomniac office worker crosses paths with a soap maker.
+                          posterUrl: https://image.tmdb.org/t/p/w500/poster.jpg
+                      - tmdbId: 1396
+                        mediaType: show
+                        averageScore: 9
+                        ratingCount: 5
+                        tmdb:
+                          title: Breaking Bad
+                          year: 2008
+                          overview: A high school chemistry teacher turned meth producer.
+                          posterUrl: https://image.tmdb.org/t/p/w500/poster.jpg
+        '400':
+          description: Invalid query parameters
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiErrorResponse'
+              examples:
+                invalidPageSize:
+                  value:
+                    error: Query parameter pageSize must be 50 or less
 
   /v1/movies/search:
     get:
@@ -1679,6 +1750,81 @@ components:
           type: array
           items:
             $ref: '#/components/schemas/MediaListItem'
+
+    DiscoverTmdbMetadata:
+      type: object
+      required:
+        - title
+        - year
+        - overview
+        - posterUrl
+      properties:
+        title:
+          type: string
+          example: Fight Club
+        year:
+          type: integer
+          nullable: true
+          example: 1999
+        overview:
+          type: string
+          example: An insomniac office worker crosses paths with a soap maker.
+        posterUrl:
+          type: string
+          nullable: true
+          example: https://image.tmdb.org/t/p/w500/poster.jpg
+
+    DiscoverFeedItem:
+      type: object
+      required:
+        - tmdbId
+        - mediaType
+        - averageScore
+        - ratingCount
+        - tmdb
+      properties:
+        tmdbId:
+          type: integer
+          minimum: 1
+          example: 550
+        mediaType:
+          $ref: '#/components/schemas/MediaType'
+        averageScore:
+          type: number
+          format: float
+          example: 9.5
+        ratingCount:
+          type: integer
+          minimum: 0
+          example: 4
+        tmdb:
+          $ref: '#/components/schemas/DiscoverTmdbMetadata'
+
+    DiscoverFeedResponse:
+      type: object
+      required:
+        - page
+        - pageSize
+        - totalPages
+        - totalResults
+        - results
+      properties:
+        page:
+          type: integer
+          example: 1
+        pageSize:
+          type: integer
+          example: 10
+        totalPages:
+          type: integer
+          example: 1
+        totalResults:
+          type: integer
+          example: 2
+        results:
+          type: array
+          items:
+            $ref: '#/components/schemas/DiscoverFeedItem'
 
     MovieDetailResponse:
       type: object

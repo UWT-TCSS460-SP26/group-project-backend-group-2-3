@@ -21,6 +21,29 @@ export interface MediaListResponse {
   totalResults: number;
 }
 
+export interface DiscoverTmdbMetadata {
+  overview: string;
+  posterUrl: string | null;
+  title: string;
+  year: number | null;
+}
+
+export interface DiscoverFeedItem {
+  averageScore: number;
+  mediaType: MediaType;
+  ratingCount: number;
+  tmdb: DiscoverTmdbMetadata;
+  tmdbId: number;
+}
+
+export interface DiscoverFeedResponse {
+  page: number;
+  pageSize: number;
+  results: DiscoverFeedItem[];
+  totalPages: number;
+  totalResults: number;
+}
+
 export interface MovieDetailResponse {
   backdropUrl: string | null;
   community: MediaDetailCommunity;

@@ -1,4 +1,5 @@
 import { Router } from 'express';
+import { discoverRouter } from './discover';
 import { issuesRouter } from './issues';
 import { meRouter } from './me';
 import { moviesRouter } from './movies';
@@ -8,6 +9,7 @@ import { tvShowsRouter } from './tv-shows';
 
 const router = Router();
 
+router.use('/discover', discoverRouter);
 router.use('/issues', issuesRouter);
 router.use('/me', meRouter);
 router.use('/movies', moviesRouter);
