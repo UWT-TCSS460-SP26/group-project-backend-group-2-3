@@ -212,3 +212,50 @@ The group finished setting initial team roles, communication expectations, meeti
 - Go/no-go decision: go for Sprint 3 turn-in after the final Auth2 token smoke test is recorded.
 - Sprint 3 production scope is complete: Auth2/JWKS middleware, local Auth2 subject mapping, hosted Postgres, public issue submission, enriched movie and TV-show detail responses, OpenAPI docs, CI, and Render deployment are integrated on main.
 - Remaining operational note: protected deployed routes require a real Auth2 access token for `API_AUDIENCE=group-2-api`; access tokens expire and should be refreshed from the TCSS 460 Token Playground for manual smoke tests.
+
+## Sprint 4 Planning and Execution Notes (May 4 - May 10, 2026)
+
+### Sprint 4 ceremonies
+
+- Sprint planning sync split ownership for admin issues routes, `/v1/me/*` routes, discovery aggregate, author surface consistency, OpenAPI drift fixes, and partner handoff docs.
+- Mid-sprint checkpoints focused on dependency order so foundational admin/CORS/OpenAPI work landed before downstream test and documentation tasks.
+- Final integration review in this branch used a local-only release gate first, with deployed smoke intentionally deferred until Sprint 4 is merged to `main` and Render is updated.
+
+### Sprint 4 task split
+
+- Rudolf owned `S4-00`, `S4-01`, `S4-02`, `S4-09`, and `S4-10`.
+- Collins owned `S4-03` and `S4-04`.
+- Mani owned `S4-05` and `S4-06`.
+- Jonathan owned `S4-07` and `S4-08`.
+
+### Timeline and dependency flow
+
+- Early sprint: admin `/v1/issues` read + triage routes and Auth2/CORS contract hardening landed first.
+- Mid sprint: `/v1/me/ratings`, `/v1/me/reviews`, and `/v1/discover/top-rated` were implemented with tests and OpenAPI updates.
+- Late sprint: author-surface audit, admin-route auth tests, and partner-facing README hardening were integrated.
+- Final sprint window: local release gate was rerun end-to-end on `rudolfs-branch` before promotion to `main`.
+
+### Final local release checklist
+
+- Formatting: `npm run format:check` passed.
+- Lint: `npm run lint` passed.
+- Build: `npm run build` passed.
+- Prisma schema: `npx prisma validate` passed.
+- Tests: `npm test` passed with 26 test suites and 230 tests passing.
+- OpenAPI: Sprint 4 routes and Auth2 issuer/audience contract are present in `openapi.yaml`.
+- README: partner-facing handoff sections were completed for Sprint 4.
+
+### Deferred post-merge production checklist
+
+- Render currently serves Sprint 3 (`main`), so Sprint 4 production smoke checks were intentionally deferred in this branch.
+- After merging Sprint 4 to `main` and deploying Render, run smoke checks for:
+- public routes (`/health`, `/v1/movies/popular`, `/v1/issues`, `/v1/discover/top-rated`);
+- protected user routes with a valid user token (`/v1/me/ratings`, `/v1/me/reviews`);
+- protected admin routes with a valid admin token (`GET/PATCH/DELETE /v1/issues` including invalid-status PATCH `400`);
+- deployed CORS preflight from `http://localhost:5173` with `Authorization` header.
+
+### Final outcome and risks
+
+- Go/no-go decision for branch promotion: go for merge to `main`.
+- Sprint 4 local integration scope is complete and gate-clean on `rudolfs-branch`.
+- Remaining release risk: production verification is still pending until Render is updated with Sprint 4 commits and token-based smoke tests are executed on the deployed environment.
