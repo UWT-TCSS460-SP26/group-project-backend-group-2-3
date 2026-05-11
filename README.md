@@ -1,17 +1,113 @@
-# TCSS 460 Group 2 Backend
+# TCSS 460 Group 2 Backend API
 
 Express and TypeScript API for the Movie and TV Review Platform group project.
 
-## Endpoints
+## Partner Handoff (Sprint 4)
 
-- Health: `GET /health`
-- API docs: `GET /api-docs`
-- Versioned API base: `/v1/*` (also accessible as `/api/v1/*` and `/*`)
-- Bug reports: `POST /v1/issues` (public — no auth required)
+### 1) Where is the API deployed?
 
-Local docs are available at [http://localhost:3000/api-docs](http://localhost:3000/api-docs).
+- Base URL: `https://group-2-9289.onrender.com`
+- Health check: `GET https://group-2-9289.onrender.com/health`
+- OpenAPI docs UI: `https://group-2-9289.onrender.com/api-docs`
+- OpenAPI JSON: `https://group-2-9289.onrender.com/openapi.json`
 
-## Quick Start
+### 2) How do I mint an access token?
+
+Use the TCSS 460 Auth2 Token Playground / issuer URL:
+
+- `https://tcss-460-iam.onrender.com`
+
+Mint an OIDC bearer token (RS256) whose audience includes:
+
+- `group-2-api`
+
+Token validation contract on this API:
+
+| Field            | Value                               |
+| ---------------- | ----------------------------------- |
+| Issuer (`iss`)   | `https://tcss-460-iam.onrender.com` |
+| Audience (`aud`) | `group-2-api`                       |
+
+Use the token as:
+
+- `Authorization: Bearer <token>`
+
+### 3) What endpoints exist?
+
+Use the OpenAPI contract as source of truth:
+
+- `https://group-2-9289.onrender.com/api-docs`
+
+High-use routes:
+
+- `GET /health`
+- `GET /v1/movies/search`
+- `GET /v1/movies/popular`
+- `GET /v1/movies/:id`
+- `GET /v1/tv-shows/search`
+- `GET /v1/tv-shows/popular`
+- `GET /v1/tv-shows/:id`
+- `GET /v1/discover/top-rated` (public)
+- `POST /v1/issues` (public)
+- `GET /v1/me/ratings` (auth required)
+- `GET /v1/me/reviews` (auth required)
+- `GET /v1/issues` (admin+)
+- `PATCH /v1/issues/:id` (admin+)
+- `DELETE /v1/issues/:id` (admin+)
+
+### 4) Which browser origins are CORS-allowlisted?
+
+Current allowlist targets local partner/frontend development:
+
+- `http://localhost:3000` (local frontend / docs)
+- `http://localhost:5173` (partner consumer-app dev origin)
+
+To add a new production origin, append it to `CORS_ALLOWED_ORIGINS` in the deployment environment and redeploy:
+
+```bash
+CORS_ALLOWED_ORIGINS=http://localhost:3000,http://localhost:5173,https://partner-app.example.com
+```
+
+The API allows the `Authorization` header in preflight, so authenticated browser calls from allowlisted origins work without extra code changes.
+
+### 5) Where do I file bug reports?
+
+Planned Bug Tracker FE URL (Sprint 5):
+
+- `https://group-2-bug-tracker-fe.onrender.com` (planned)
+
+Until that FE is deployed, submit directly to the public bug-report API:
+
+- `POST https://group-2-9289.onrender.com/v1/issues`
+
+### 6) Known limits and quirks
+
+- No app-level rate limiter is currently enforced by this API.
+- TMDB-backed routes depend on TMDB availability and may degrade when TMDB is unavailable.
+- `GET /v1/discover/top-rated` runs a live SQL aggregate and then fetches TMDB metadata per ranked item on the requested page.
+- Discovery responses currently use a live-per-request strategy (no cache/materialized view yet).
+- Missing or temporarily unavailable TMDB items are skipped rather than failing the entire discovery response.
+
+## First Authenticated Call (Partner Quick Test)
+
+```bash
+TOKEN="<auth2-access-token-with-aud-group-2-api>"
+
+curl -sS \
+  -H "Authorization: Bearer ${TOKEN}" \
+  https://group-2-9289.onrender.com/v1/me/ratings
+```
+
+Expected behavior:
+
+- `200` with paginated JSON if token is valid.
+- `401` if the token is missing, expired, or has invalid `iss`/`aud`.
+
+## Spec Freeze Policy
+
+From Sprint 4 onward, OpenAPI changes must ship in the same PR as route behavior changes. The partner-facing contract is `openapi.yaml` + `/api-docs`; code/spec drift is treated as a release blocker.
+
+## Local Development Quick Start
 
 ```bash
 npm install
@@ -20,74 +116,103 @@ npm run dev
 
 The server uses `PORT` from the environment and defaults to `3000`.
 
-Copy `.env.example` to `.env` for local development and fill in:
+Copy `.env.example` to `.env` and set:
 
-- `TMDB_API_KEY` for Sprint 1 TMDB proxy routes.
-- `DATABASE_URL` for the local PostgreSQL database used by Prisma.
-- `AUTH_ISSUER` and `API_AUDIENCE=group-2-api` for Auth2 bearer token verification.
-- `CORS_ALLOWED_ORIGINS` as a comma-separated list of browser origins allowed to call the API.
+- `TMDB_API_KEY` for TMDB proxy and enrichment routes.
+- `DATABASE_URL` for local PostgreSQL.
+- `AUTH_ISSUER=https://tcss-460-iam.onrender.com`
+- `API_AUDIENCE=group-2-api`
+- `CORS_ALLOWED_ORIGINS` as a comma-separated allowlist.
 
-## Sprint 2 Database Setup
+Local docs are available at:
 
-After `DATABASE_URL` is configured, apply the committed migrations and seed the local admin user:
+- `http://localhost:3000/api-docs`
+
+## CORS Preflight Verification
+
+```bash
+curl -i -X OPTIONS \
+  -H 'Origin: http://localhost:5173' \
+  -H 'Access-Control-Request-Method: GET' \
+  -H 'Access-Control-Request-Headers: Authorization' \
+  http://localhost:3000/v1/movies/popular
+```
+
+The response should include:
+
+- `Access-Control-Allow-Origin: http://localhost:5173`
+
+## Database Setup (Local)
+
+After `DATABASE_URL` is configured, apply migrations and seed:
 
 ```bash
 npx prisma migrate dev
 npx prisma db seed
 ```
 
-The seed is idempotent. It guarantees an admin account with username `admin` and email
-`admin@dev.local`.
+The seed is idempotent and ensures an admin account with:
 
-The Sprint 3 migration backfills existing local Sprint 2 users with `legacy-user-<id>` subject IDs,
-then new authenticated writes link Auth2 subjects to local numeric `User.id` rows. Teammates should
-not need to reset local dev data unless they have manual duplicate usernames or emails.
+- username `admin`
+- email `admin@dev.local`
 
-When the Prisma schema changes, run `npx prisma migrate dev --name <short-change-name>` and commit
-the updated `prisma/schema.prisma` plus the generated `prisma/migrations/...` folder. When seed data
-changes, update `prisma/seed.ts` and rerun `npx prisma db seed`; the seed script should remain safe
-to run more than once on a teammate's local database.
+Sprint 3 migration behavior:
 
-## Running the Tests
+- Existing Sprint 2 users are backfilled with `legacy-user-<id>` subject IDs.
+- New authenticated writes map Auth2 subjects to local numeric `User.id` rows.
 
-The test suite needs a local PostgreSQL database. The fastest way to get one is via Docker:
+## Running Tests
+
+The test suite needs PostgreSQL. Fast path with Docker:
 
 ```bash
 # 1. Install dependencies
 npm install
 
-# 2. Start a local Postgres (Docker required — runs on port 5433)
+# 2. Start local Postgres on port 5433
 docker compose up -d
 
-# 3. Apply migrations and generate the Prisma client
+# 3. Apply migrations and generate Prisma client
 npx prisma migrate deploy
 npx prisma generate
 
-# 4. Run the tests
+# 4. Run tests
 npm test
 ```
 
-Tests fall back to sensible defaults via `tests/setup.ts`, so a `.env` file is not required just to run them. If you already have your own Postgres running, set `DATABASE_URL` in `.env` to point at it instead of using `docker compose`.
+Tests load defaults from `tests/setup.ts`, so a `.env` file is not required just to run tests.
 
 ## Route and Controller Layout
 
-The project now uses v1 as the single active API surface:
+- `src/routes/v1/index.ts` mounts active route families.
+- `src/routes/v1/*.ts` defines endpoint families.
+- `src/controllers/v1/*.ts` contains route handlers.
+- Movie search route: `GET /v1/movies/search?title=...`.
+- TV routes are under `/v1/tv-shows`.
 
-- `src/routes/v1/index.ts` mounts the active route families.
-- `src/routes/v1/*.ts` defines endpoints for each route family.
-- `src/controllers/v1/*.ts` is used where handlers are split from routes.
-- Movie search uses `GET /v1/movies/search?title=...`.
-- TV-show routes use `/v1/tv-shows`.
+## Sprint 4 Discovery Contract
+
+Sprint 4 ships:
+
+- `GET /v1/discover/top-rated`
+
+This sprint does not add:
+
+- `/v1/discover/most-reviewed`
+
+Implementation strategy:
+
+- SQL aggregate first in PostgreSQL.
+- TMDB metadata fetch per ranked item on the current page.
+- Missing/upstream-failing TMDB items are skipped.
 
 ## Shared Contracts
 
-- Auth role and bearer token claim types live in `src/types/auth.ts`.
-- API error response types and status constants live in `src/types/api.ts`.
-- Controllers should pass expected failures with `next(new HttpError(status, message))`.
-- The global error middleware maps errors through `src/errors/error-mapper.ts` so responses use
-  the standard `{ "error": "message" }` shape.
-- Owner checks for mutation routes should use `assertOwner` or `assertOwnerOrAdmin` from
-  `src/utils/authorization.ts`. `DELETE /reviews/:id` should use the owner-or-admin helper.
+- Auth role/claim types: `src/types/auth.ts`
+- API status/error constants: `src/types/api.ts`
+- Standard error shape: `{ "error": "message" }`
+- Error mapping middleware: `src/errors/error-mapper.ts`
+- Owner checks: `assertOwner` / `assertOwnerOrAdmin` in `src/utils/authorization.ts`
 
 ## Scripts
 
@@ -101,10 +226,14 @@ The project now uses v1 as the single active API surface:
 | `npm run format`       | Format code with Prettier         |
 | `npm run format:check` | Check formatting                  |
 
-## Deployed URL
+## Deployment Notes
 
-`https://group-2-9289.onrender.com/`
+Production runs on Render with hosted PostgreSQL.
 
-Production deployment runs on Render with a hosted PostgreSQL database. The Render build command
-installs dependencies, generates Prisma Client, applies committed migrations with
-`npx prisma migrate deploy`, and compiles TypeScript before starting the API with `npm start`.
+Build command:
+
+- `npm ci --include=dev && npx prisma generate && npx prisma migrate deploy && npm run build`
+
+Start command:
+
+- `npm start`
