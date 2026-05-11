@@ -20,4 +20,17 @@ describe('mapErrorToApiResponse', () => {
       body: { error: 'Internal server error' },
     });
   });
+
+  it('maps malformed JSON parser errors to a 400 response', () => {
+    const error = Object.assign(new SyntaxError('Unexpected token } in JSON'), {
+      status: HTTP_STATUS.badRequest,
+      statusCode: HTTP_STATUS.badRequest,
+      type: 'entity.parse.failed',
+    });
+
+    expect(mapErrorToApiResponse(error)).toEqual({
+      statusCode: HTTP_STATUS.badRequest,
+      body: { error: 'Invalid JSON body' },
+    });
+  });
 });

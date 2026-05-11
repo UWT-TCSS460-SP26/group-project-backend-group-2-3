@@ -1,4 +1,9 @@
+import type { CommunitySummary } from '../services/community-summary';
+
 export type MediaType = 'movie' | 'show';
+
+/** Community ratings and reviews on a media detail response (shared by movie and TV detail routes). */
+export type MediaDetailCommunity = CommunitySummary;
 
 export interface MediaListItem {
   id: number;
@@ -16,8 +21,32 @@ export interface MediaListResponse {
   totalResults: number;
 }
 
+export interface DiscoverTmdbMetadata {
+  overview: string;
+  posterUrl: string | null;
+  title: string;
+  year: number | null;
+}
+
+export interface DiscoverFeedItem {
+  averageScore: number;
+  mediaType: MediaType;
+  ratingCount: number;
+  tmdb: DiscoverTmdbMetadata;
+  tmdbId: number;
+}
+
+export interface DiscoverFeedResponse {
+  page: number;
+  pageSize: number;
+  results: DiscoverFeedItem[];
+  totalPages: number;
+  totalResults: number;
+}
+
 export interface MovieDetailResponse {
   backdropUrl: string | null;
+  community: MediaDetailCommunity;
   genres: string[];
   id: number;
   overview: string;
@@ -41,6 +70,7 @@ export interface ShowDetailResponse {
   status: string;
   title: string;
   year: number | null;
+  community: MediaDetailCommunity;
 }
 
 export interface TmdbGenre {

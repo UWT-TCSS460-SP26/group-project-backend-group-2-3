@@ -1,19 +1,38 @@
 import request from 'supertest';
 import { app } from '../src/app';
 import { prisma } from '../src/lib/prisma';
+import { USER_ROLES, UserRole } from '../src/types/auth';
+import { authHeader, createAccessToken } from './support/auth-fixtures';
 
 // ---------------------------------------------------------------------------
-// Prisma mock — only the issue model is needed; no auth, no user lookup.
+// Prisma mock — covers the public POST plus the admin GET list/detail/PATCH/DELETE.
 // ---------------------------------------------------------------------------
 jest.mock('../src/lib/prisma', () => ({
   prisma: {
     issue: {
       create: jest.fn(),
+      findUnique: jest.fn(),
+      findMany: jest.fn(),
+      count: jest.fn(),
+      update: jest.fn(),
+      delete: jest.fn(),
     },
+    $transaction: jest.fn(),
   },
 }));
 
 const mockCreate = prisma.issue.create as jest.Mock;
+const mockFindUnique = prisma.issue.findUnique as jest.Mock;
+const mockTransaction = prisma.$transaction as jest.Mock;
+const mockUpdate = prisma.issue.update as jest.Mock;
+const mockDelete = prisma.issue.delete as jest.Mock;
+
+const adminToken = (userId = 1): string =>
+  createAccessToken({
+    sub: userId,
+    email: `admin${userId}@test.com`,
+    role: USER_ROLES.admin satisfies UserRole,
+  });
 
 beforeEach(() => {
   jest.resetAllMocks();
@@ -186,5 +205,267 @@ describe('POST /api/v1/issues', () => {
 
     expect(res.status).toBe(400);
     expect(res.body).toHaveProperty('error');
+  });
+});
+
+// ---------------------------------------------------------------------------
+// GET /api/v1/issues (admin)
+// ---------------------------------------------------------------------------
+
+describe('GET /api/v1/issues (admin)', () => {
+  it('200 — admin token returns paginated envelope with defaults', async () => {
+    mockTransaction.mockResolvedValue([1, [mockIssueRow]]);
+
+    const res = await request(app).get('/api/v1/issues').set(authHeader(adminToken()));
+
+    expect(res.status).toBe(200);
+    expect(res.body).toEqual({
+      page: 1,
+      pageSize: 10,
+      totalPages: 1,
+      totalResults: 1,
+      results: [
+        {
+          id: 1,
+          title: 'App crashes on login',
+          description: 'Clicking the login button causes a 500 error.',
+          reproductionSteps: null,
+          reporterContact: null,
+          status: 'open',
+          createdAt: '2026-01-01T00:00:00.000Z',
+          updatedAt: '2026-01-01T00:00:00.000Z',
+        },
+      ],
+    });
+  });
+
+  it('200 — empty results when no issues exist', async () => {
+    mockTransaction.mockResolvedValue([0, []]);
+
+    const res = await request(app).get('/api/v1/issues').set(authHeader(adminToken()));
+
+    expect(res.status).toBe(200);
+    expect(res.body.results).toEqual([]);
+    expect(res.body.totalResults).toBe(0);
+    expect(res.body.totalPages).toBe(0);
+  });
+
+  it('200 — status filter is forwarded to prisma where clause', async () => {
+    mockTransaction.mockImplementation(
+      async (calls: Promise<unknown>[]) => await Promise.all(calls)
+    );
+    (prisma.issue.count as jest.Mock).mockResolvedValue(0);
+    (prisma.issue.findMany as jest.Mock).mockResolvedValue([]);
+
+    const res = await request(app).get('/api/v1/issues?status=open').set(authHeader(adminToken()));
+
+    expect(res.status).toBe(200);
+    expect(prisma.issue.count).toHaveBeenCalledWith({ where: { status: 'open' } });
+    expect(prisma.issue.findMany).toHaveBeenCalledWith(
+      expect.objectContaining({ where: { status: 'open' } })
+    );
+  });
+
+  it('200 — page and pageSize are echoed and translate to skip/take', async () => {
+    mockTransaction.mockImplementation(
+      async (calls: Promise<unknown>[]) => await Promise.all(calls)
+    );
+    (prisma.issue.count as jest.Mock).mockResolvedValue(0);
+    (prisma.issue.findMany as jest.Mock).mockResolvedValue([]);
+
+    const res = await request(app)
+      .get('/api/v1/issues?page=2&pageSize=5')
+      .set(authHeader(adminToken()));
+
+    expect(res.status).toBe(200);
+    expect(res.body.page).toBe(2);
+    expect(res.body.pageSize).toBe(5);
+    expect(prisma.issue.findMany).toHaveBeenCalledWith(
+      expect.objectContaining({ skip: 5, take: 5 })
+    );
+  });
+
+  it('200 — sort=createdAt:asc flips the order direction', async () => {
+    mockTransaction.mockImplementation(
+      async (calls: Promise<unknown>[]) => await Promise.all(calls)
+    );
+    (prisma.issue.count as jest.Mock).mockResolvedValue(0);
+    (prisma.issue.findMany as jest.Mock).mockResolvedValue([]);
+
+    await request(app).get('/api/v1/issues?sort=createdAt:asc').set(authHeader(adminToken()));
+
+    expect(prisma.issue.findMany).toHaveBeenCalledWith(
+      expect.objectContaining({ orderBy: [{ createdAt: 'asc' }, { id: 'asc' }] })
+    );
+  });
+
+  it('400 — unknown status value is rejected', async () => {
+    const res = await request(app)
+      .get('/api/v1/issues?status=banana')
+      .set(authHeader(adminToken()));
+
+    expect(res.status).toBe(400);
+    expect(res.body.error).toMatch(/status must be one of/i);
+  });
+
+  it('400 — unknown sort value is rejected', async () => {
+    const res = await request(app)
+      .get('/api/v1/issues?sort=createdAt:sideways')
+      .set(authHeader(adminToken()));
+
+    expect(res.status).toBe(400);
+    expect(res.body.error).toMatch(/sort must be one of/i);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// GET /api/v1/issues/:id (admin)
+// ---------------------------------------------------------------------------
+
+describe('GET /api/v1/issues/:id (admin)', () => {
+  it('200 — admin gets a single issue by id', async () => {
+    mockFindUnique.mockResolvedValue(mockIssueRow);
+
+    const res = await request(app).get('/api/v1/issues/1').set(authHeader(adminToken()));
+
+    expect(res.status).toBe(200);
+    expect(res.body).toEqual({
+      id: 1,
+      title: 'App crashes on login',
+      description: 'Clicking the login button causes a 500 error.',
+      reproductionSteps: null,
+      reporterContact: null,
+      status: 'open',
+      createdAt: '2026-01-01T00:00:00.000Z',
+      updatedAt: '2026-01-01T00:00:00.000Z',
+    });
+    expect(mockFindUnique).toHaveBeenCalledWith({ where: { id: 1 } });
+  });
+
+  it('404 — missing id returns a clear error', async () => {
+    mockFindUnique.mockResolvedValue(null);
+
+    const res = await request(app).get('/api/v1/issues/9999').set(authHeader(adminToken()));
+
+    expect(res.status).toBe(404);
+    expect(res.body.error).toMatch(/issue not found/i);
+  });
+
+  it('400 — non-integer id returns a clear error', async () => {
+    const res = await request(app).get('/api/v1/issues/abc').set(authHeader(adminToken()));
+
+    expect(res.status).toBe(400);
+    expect(res.body.error).toMatch(/issue id must be a positive integer/i);
+    expect(mockFindUnique).not.toHaveBeenCalled();
+  });
+});
+
+// ---------------------------------------------------------------------------
+// PATCH /api/v1/issues/:id (admin)
+// ---------------------------------------------------------------------------
+
+describe('PATCH /api/v1/issues/:id (admin)', () => {
+  it('200 — valid status update returns the updated issue', async () => {
+    mockFindUnique.mockResolvedValue(mockIssueRow);
+    mockUpdate.mockResolvedValue({
+      ...mockIssueRow,
+      status: 'in_progress',
+      updatedAt: new Date('2026-05-02T09:15:00.000Z'),
+    });
+
+    const res = await request(app)
+      .patch('/api/v1/issues/1')
+      .set(authHeader(adminToken()))
+      .send({ status: 'in_progress' });
+
+    expect(res.status).toBe(200);
+    expect(res.body.status).toBe('in_progress');
+    expect(res.body.updatedAt).toBe('2026-05-02T09:15:00.000Z');
+    expect(mockUpdate).toHaveBeenCalledWith({
+      where: { id: 1 },
+      data: { status: 'in_progress' },
+    });
+  });
+
+  it('200 — empty body returns the unchanged issue and skips the update call', async () => {
+    mockFindUnique.mockResolvedValue(mockIssueRow);
+
+    const res = await request(app).patch('/api/v1/issues/1').set(authHeader(adminToken())).send({});
+
+    expect(res.status).toBe(200);
+    expect(res.body.status).toBe('open');
+    expect(mockUpdate).not.toHaveBeenCalled();
+  });
+
+  it('400 — unknown status string is rejected with a clear error', async () => {
+    const res = await request(app)
+      .patch('/api/v1/issues/1')
+      .set(authHeader(adminToken()))
+      .send({ status: 'banana' });
+
+    expect(res.status).toBe(400);
+    expect(res.body.error).toMatch(/status must be one of/i);
+    expect(mockFindUnique).not.toHaveBeenCalled();
+    expect(mockUpdate).not.toHaveBeenCalled();
+  });
+
+  it('404 — missing issue returns a clear error', async () => {
+    mockFindUnique.mockResolvedValue(null);
+
+    const res = await request(app)
+      .patch('/api/v1/issues/9999')
+      .set(authHeader(adminToken()))
+      .send({ status: 'resolved' });
+
+    expect(res.status).toBe(404);
+    expect(res.body.error).toMatch(/issue not found/i);
+    expect(mockUpdate).not.toHaveBeenCalled();
+  });
+
+  it('400 — non-integer id returns a clear error', async () => {
+    const res = await request(app)
+      .patch('/api/v1/issues/abc')
+      .set(authHeader(adminToken()))
+      .send({ status: 'resolved' });
+
+    expect(res.status).toBe(400);
+    expect(res.body.error).toMatch(/issue id must be a positive integer/i);
+    expect(mockFindUnique).not.toHaveBeenCalled();
+  });
+});
+
+// ---------------------------------------------------------------------------
+// DELETE /api/v1/issues/:id (admin)
+// ---------------------------------------------------------------------------
+
+describe('DELETE /api/v1/issues/:id (admin)', () => {
+  it('204 — admin delete removes the row and returns no body', async () => {
+    mockFindUnique.mockResolvedValue({ id: 1 });
+    mockDelete.mockResolvedValue(mockIssueRow);
+
+    const res = await request(app).delete('/api/v1/issues/1').set(authHeader(adminToken()));
+
+    expect(res.status).toBe(204);
+    expect(res.body).toEqual({});
+    expect(mockDelete).toHaveBeenCalledWith({ where: { id: 1 } });
+  });
+
+  it('404 — missing issue returns a clear error and skips delete', async () => {
+    mockFindUnique.mockResolvedValue(null);
+
+    const res = await request(app).delete('/api/v1/issues/9999').set(authHeader(adminToken()));
+
+    expect(res.status).toBe(404);
+    expect(res.body.error).toMatch(/issue not found/i);
+    expect(mockDelete).not.toHaveBeenCalled();
+  });
+
+  it('400 — non-integer id returns a clear error', async () => {
+    const res = await request(app).delete('/api/v1/issues/abc').set(authHeader(adminToken()));
+
+    expect(res.status).toBe(400);
+    expect(res.body.error).toMatch(/issue id must be a positive integer/i);
+    expect(mockFindUnique).not.toHaveBeenCalled();
+    expect(mockDelete).not.toHaveBeenCalled();
   });
 });

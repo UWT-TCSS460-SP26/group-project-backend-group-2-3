@@ -1,11 +1,22 @@
 openapi: 3.0.3
 info:
   title: Group 2 Movie and TV Review API
-  version: 3.0.0
+  version: 4.0.0
   description: |
-    Sprint 3 backend API for TCSS 460 Group 2.
+    Sprint 4 backend API for TCSS 460 Group 2.
     Proxies TMDB for media data and persists user ratings, reviews, and bug reports via PostgreSQL.
-    All mutation routes require an Auth2 OIDC bearer token. Public routes (health, issues, media reads) do not.
+    Versioned resources are documented under `/v1/...`; `/api/v1/...` remains supported as a compatibility alias.
+
+    ## Authentication
+
+    Mutation routes and admin routes require an Auth² OIDC bearer token.
+    - **Issuer:** `https://tcss-460-iam.onrender.com` (Auth²)
+    - **Audience:** `group-2-api`
+    - **Algorithm:** `RS256`, validated against the issuer's JWKS
+    - **How to mint a token:** the TCSS 460 Auth² Token Playground at the issuer URL above
+
+    Pass tokens as `Authorization: Bearer <token>`. Public routes (health, TMDB proxy reads,
+    public `GET` ratings/reviews, public `POST /v1/issues`) do not require a token.
 
 servers:
   - url: https://group-2-9289.onrender.com
@@ -22,6 +33,8 @@ tags:
     description: Movie routes proxied from TMDB
   - name: TV Shows
     description: TV show routes proxied from TMDB
+  - name: Discover
+    description: Public community discovery feeds built from SQL aggregates plus TMDB metadata
   - name: Ratings
     description: User ratings for movies and TV shows
   - name: Reviews
@@ -55,6 +68,75 @@ paths:
                     type: string
                     example: group-project-backend-group-2-3
 
+  /v1/discover/top-rated:
+    get:
+      tags: [Discover]
+      summary: List top-rated community picks
+      description: Returns a public discovery feed ranked by average local rating, using a SQL aggregate over local ratings and live TMDB metadata enrichment for each item on the current page.
+      parameters:
+        - in: query
+          name: page
+          required: false
+          description: Positive integer page number. Defaults to 1.
+          schema:
+            type: integer
+            minimum: 1
+            default: 1
+          example: 1
+        - in: query
+          name: pageSize
+          required: false
+          description: Positive integer page size up to 50. Defaults to 10.
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 50
+            default: 10
+          example: 10
+      responses:
+        '200':
+          description: Paginated list of top-rated community-ranked items
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DiscoverFeedResponse'
+              examples:
+                success:
+                  value:
+                    page: 1
+                    pageSize: 2
+                    totalPages: 1
+                    totalResults: 2
+                    results:
+                      - tmdbId: 550
+                        mediaType: movie
+                        averageScore: 9.5
+                        ratingCount: 4
+                        tmdb:
+                          title: Fight Club
+                          year: 1999
+                          overview: An insomniac office worker crosses paths with a soap maker.
+                          posterUrl: https://image.tmdb.org/t/p/w500/poster.jpg
+                      - tmdbId: 1396
+                        mediaType: show
+                        averageScore: 9
+                        ratingCount: 5
+                        tmdb:
+                          title: Breaking Bad
+                          year: 2008
+                          overview: A high school chemistry teacher turned meth producer.
+                          posterUrl: https://image.tmdb.org/t/p/w500/poster.jpg
+        '400':
+          description: Invalid query parameters
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiErrorResponse'
+              examples:
+                invalidPageSize:
+                  value:
+                    error: Query parameter pageSize must be 50 or less
+
   /v1/movies/search:
     get:
       tags: [Movies]
@@ -62,7 +144,7 @@ paths:
       description: Searches TMDB for movies and returns a transformed paginated list.
       parameters:
         - in: query
-          name: q
+          name: title
           required: true
           description: Movie title query.
           schema:
@@ -105,9 +187,9 @@ paths:
               schema:
                 $ref: '#/components/schemas/ApiErrorResponse'
               examples:
-                missingQ:
+                missingTitle:
                   value:
-                    error: Query parameter q is required
+                    error: Query parameter title is required
                 invalidPage:
                   value:
                     error: Query parameter page must be a positive integer
@@ -257,9 +339,9 @@ paths:
       description: Searches TMDB TV shows and returns a transformed paginated list.
       parameters:
         - in: query
-          name: q
+          name: title
           required: true
-          description: Show title query.
+          description: Show title search string.
           schema:
             type: string
             minLength: 1
@@ -300,9 +382,9 @@ paths:
               schema:
                 $ref: '#/components/schemas/ApiErrorResponse'
               examples:
-                missingQ:
+                missingTitle:
                   value:
-                    error: q is required
+                    error: title is required
                 invalidPage:
                   value:
                     error: page must be a positive integer
@@ -383,7 +465,10 @@ paths:
     get:
       tags: [TV Shows]
       summary: Get show details by id
-      description: Returns transformed details for a single TV show.
+      description: |
+        Returns TMDB metadata for a single TV show plus a `community` object with
+        local average score, rating and review counts, and recent reviews (newest first).
+        The same shape is used for empty local data (null average, zero counts, empty recent reviews).
       parameters:
         - in: path
           name: id
@@ -415,10 +500,37 @@ paths:
                     status: Ended
                     rating: 8.9
                     community:
-                      averageScore: 8.1
-                      ratingCount: 30
-                      reviewCount: 8
+                      averageScore: null
+                      ratingCount: 0
+                      reviewCount: 0
                       recentReviews: []
+                successWithLocalReviews:
+                  value:
+                    id: 1396
+                    title: Breaking Bad
+                    year: 2008
+                    posterUrl: https://image.tmdb.org/t/p/w500/poster.jpg
+                    backdropUrl: https://image.tmdb.org/t/p/w780/backdrop.jpg
+                    overview: A high school chemistry teacher turned methamphetamine manufacturer.
+                    genres: [Drama]
+                    seasonCount: 5
+                    episodeCount: 62
+                    status: Ended
+                    rating: 8.9
+                    community:
+                      averageScore: 8.5
+                      ratingCount: 14
+                      reviewCount: 5
+                      recentReviews:
+                        - id: 501
+                          mediaType: show
+                          title: Binge-worthy
+                          body: Every episode earns its runtime.
+                          createdAt: '2026-05-02T15:00:00.000Z'
+                          updatedAt: '2026-05-02T15:00:00.000Z'
+                          author:
+                            id: 77
+                            username: tvfan
         '404':
           description: Show not found or invalid show ID
           content:
@@ -639,6 +751,7 @@ paths:
                 notFound:
                   value:
                     error: Review not found
+
     put:
       tags: [Reviews]
       summary: Update review
@@ -696,38 +809,79 @@ paths:
                 notFound:
                   value:
                     error: Review not found
-    delete:
+
+  /v1/me/reviews:
+    get:
       tags: [Reviews]
-      summary: Delete review
-      description: Deletes a review owned by the authenticated user or an admin.
+      summary: List my reviews
+      description: Returns the authenticated caller's own reviews. The server identifies the caller from the bearer token only and ignores any caller-supplied userId query parameter.
       security:
         - bearerAuth: []
       parameters:
-        - in: path
-          name: id
-          required: true
-          description: Positive review id.
+        - in: query
+          name: page
+          required: false
+          description: Positive integer page number. Defaults to 1.
           schema:
             type: integer
             minimum: 1
-          example: 101
+            default: 1
+          example: 1
+        - in: query
+          name: pageSize
+          required: false
+          description: Positive integer page size up to 50. Defaults to 10.
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 50
+            default: 10
+          example: 10
+        - in: query
+          name: sort
+          required: false
+          description: Sort order for the caller's reviews. Defaults to `createdAt:desc`.
+          schema:
+            type: string
+            enum: ['createdAt:desc', 'createdAt:asc']
+            default: 'createdAt:desc'
+          example: 'createdAt:desc'
       responses:
-        '204':
-          description: Review deleted
-        '401':
-          $ref: '#/components/responses/UnauthorizedError'
-        '403':
-          $ref: '#/components/responses/ForbiddenError'
-        '404':
-          description: Review not found
+        '200':
+          description: Paginated list of the authenticated user's reviews
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ReviewListResponse'
+              examples:
+                success:
+                  value:
+                    page: 1
+                    pageSize: 1
+                    totalPages: 1
+                    totalResults: 1
+                    results:
+                      - id: 101
+                        mediaType: movie
+                        title: Great watch
+                        body: This movie stayed sharp, focused, and worth revisiting.
+                        createdAt: '2026-04-26T18:30:00.000Z'
+                        updatedAt: '2026-04-26T18:30:00.000Z'
+                        author:
+                          id: 1
+                          username: reviews-int-owner
+        '400':
+          description: Invalid query parameters
           content:
             application/json:
               schema:
                 $ref: '#/components/schemas/ApiErrorResponse'
               examples:
-                notFound:
+                invalidSort:
                   value:
-                    error: Review not found
+                    error: 'Query parameter sort must be one of: createdAt:desc, createdAt:asc'
+        '401':
+          $ref: '#/components/responses/UnauthorizedError'
 
   /v1/ratings:
     get:
@@ -1076,6 +1230,289 @@ paths:
                 badFieldType:
                   value:
                     error: reproductionSteps must be a string
+    get:
+      tags: [Issues]
+      summary: List bug reports (admin)
+      description: >
+        Admin-gated paginated queue of bug reports. Requires an Auth² bearer token whose role
+        is Admin or higher (Admin, SuperAdmin, Owner). User and Moderator tokens receive 403.
+        Defaults: `page=1`, `pageSize=10` (max `50`), `sort=createdAt:desc`. Optional `status`
+        filter restricts results to one IssueStatus value.
+      security:
+        - bearerAuth: []
+      parameters:
+        - in: query
+          name: page
+          required: false
+          description: 1-indexed page number. Defaults to 1.
+          schema:
+            type: integer
+            minimum: 1
+            default: 1
+          example: 1
+        - in: query
+          name: pageSize
+          required: false
+          description: Page size. Defaults to 10. Maximum 50.
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 50
+            default: 10
+          example: 10
+        - in: query
+          name: status
+          required: false
+          description: Optional IssueStatus filter.
+          schema:
+            type: string
+            enum: [open, in_progress, resolved, closed]
+          example: open
+        - in: query
+          name: sort
+          required: false
+          description: Sort order. Defaults to `createdAt:desc`.
+          schema:
+            type: string
+            enum: [createdAt:desc, createdAt:asc]
+            default: createdAt:desc
+          example: createdAt:desc
+      responses:
+        '200':
+          description: Paginated list of bug reports
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/IssueAdminListResponse'
+              examples:
+                success:
+                  value:
+                    page: 1
+                    pageSize: 10
+                    totalPages: 1
+                    totalResults: 1
+                    results:
+                      - id: 1
+                        title: App crashes on login
+                        description: Clicking the login button causes a 500 error.
+                        reproductionSteps: "1. Open the app\n2. Navigate to login\n3. Click the login button"
+                        reporterContact: reporter@example.com
+                        status: open
+                        createdAt: '2026-05-01T12:00:00.000Z'
+                        updatedAt: '2026-05-01T12:00:00.000Z'
+        '400':
+          description: Invalid query parameter
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiErrorResponse'
+              examples:
+                invalidStatus:
+                  value:
+                    error: 'Query parameter status must be one of: open, in_progress, resolved, closed'
+                invalidSort:
+                  value:
+                    error: 'Query parameter sort must be one of: createdAt:desc, createdAt:asc'
+                invalidPageSize:
+                  value:
+                    error: Query parameter pageSize must be 50 or less
+        '401':
+          $ref: '#/components/responses/UnauthorizedError'
+        '403':
+          $ref: '#/components/responses/ForbiddenError'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+  /v1/issues/{id}:
+    get:
+      tags: [Issues]
+      summary: Get bug report by id (admin)
+      description: >
+        Admin-gated lookup for a single bug report. Requires an Auth² bearer token with role
+        Admin or higher (Admin, SuperAdmin, Owner).
+      security:
+        - bearerAuth: []
+      parameters:
+        - in: path
+          name: id
+          required: true
+          description: Positive issue id.
+          schema:
+            type: integer
+            minimum: 1
+          example: 1
+      responses:
+        '200':
+          description: Bug report found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/IssueAdminResponse'
+              examples:
+                success:
+                  value:
+                    id: 1
+                    title: App crashes on login
+                    description: Clicking the login button causes a 500 error.
+                    reproductionSteps: "1. Open the app\n2. Navigate to login\n3. Click the login button"
+                    reporterContact: reporter@example.com
+                    status: open
+                    createdAt: '2026-05-01T12:00:00.000Z'
+                    updatedAt: '2026-05-01T12:00:00.000Z'
+        '400':
+          description: Invalid path id
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiErrorResponse'
+              examples:
+                invalidId:
+                  value:
+                    error: Issue id must be a positive integer
+        '401':
+          $ref: '#/components/responses/UnauthorizedError'
+        '403':
+          $ref: '#/components/responses/ForbiddenError'
+        '404':
+          description: Issue not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiErrorResponse'
+              examples:
+                notFound:
+                  value:
+                    error: Issue not found
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+    patch:
+      tags: [Issues]
+      summary: Update bug report (admin)
+      description: >
+        Admin-gated partial-merge update for a bug report. Currently only the
+        `status` field is mutable. Send a partial body — fields that are omitted
+        are left unchanged. An empty body returns the unchanged issue with 200.
+        Unknown `status` values are rejected with 400.
+        Requires an Auth² bearer token with role Admin or higher.
+      security:
+        - bearerAuth: []
+      parameters:
+        - in: path
+          name: id
+          required: true
+          description: Positive issue id.
+          schema:
+            type: integer
+            minimum: 1
+          example: 1
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/IssueUpdateRequest'
+            examples:
+              statusToInProgress:
+                value:
+                  status: in_progress
+              statusToResolved:
+                value:
+                  status: resolved
+              emptyBody:
+                value: {}
+      responses:
+        '200':
+          description: Updated issue (or unchanged issue when body is empty)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/IssueAdminResponse'
+              examples:
+                success:
+                  value:
+                    id: 1
+                    title: App crashes on login
+                    description: Clicking the login button causes a 500 error.
+                    reproductionSteps: "1. Open the app\n2. Navigate to login\n3. Click the login button"
+                    reporterContact: reporter@example.com
+                    status: in_progress
+                    createdAt: '2026-05-01T12:00:00.000Z'
+                    updatedAt: '2026-05-02T09:15:00.000Z'
+        '400':
+          description: Invalid path id or invalid status value
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiErrorResponse'
+              examples:
+                invalidId:
+                  value:
+                    error: Issue id must be a positive integer
+                invalidStatus:
+                  value:
+                    error: 'status must be one of: open, in_progress, resolved, closed'
+        '401':
+          $ref: '#/components/responses/UnauthorizedError'
+        '403':
+          $ref: '#/components/responses/ForbiddenError'
+        '404':
+          description: Issue not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiErrorResponse'
+              examples:
+                notFound:
+                  value:
+                    error: Issue not found
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+    delete:
+      tags: [Issues]
+      summary: Delete bug report (admin)
+      description: >
+        Admin-gated delete for a bug report. Returns 204 with an empty body on
+        success. Requires an Auth² bearer token with role Admin or higher.
+      security:
+        - bearerAuth: []
+      parameters:
+        - in: path
+          name: id
+          required: true
+          description: Positive issue id.
+          schema:
+            type: integer
+            minimum: 1
+          example: 1
+      responses:
+        '204':
+          description: Issue deleted
+        '400':
+          description: Invalid path id
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiErrorResponse'
+              examples:
+                invalidId:
+                  value:
+                    error: Issue id must be a positive integer
+        '401':
+          $ref: '#/components/responses/UnauthorizedError'
+        '403':
+          $ref: '#/components/responses/ForbiddenError'
+        '404':
+          description: Issue not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiErrorResponse'
+              examples:
+                notFound:
+                  value:
+                    error: Issue not found
+        '500':
+          $ref: '#/components/responses/InternalServerError'
 
   /v1/me/ratings:
     get:
@@ -1169,9 +1606,19 @@ components:
       type: http
       scheme: bearer
       bearerFormat: JWT
-      description: >
-        Auth2 OIDC bearer token. Obtain from the issuer configured in AUTH_ISSUER.
-        The token audience must match API_AUDIENCE (default: group-2-api).
+      description: |
+        Auth² OIDC bearer token (RS256, validated against the issuer JWKS).
+
+        | Field    | Value                                |
+        |----------|--------------------------------------|
+        | Issuer   | `https://tcss-460-iam.onrender.com`  |
+        | Audience | `group-2-api`                        |
+
+        Obtain a token from the TCSS 460 Auth² Token Playground at the issuer URL,
+        then pass it as `Authorization: Bearer <token>`.
+
+        Tokens whose `iss` does not match the issuer above, or whose `aud` does not
+        contain `group-2-api`, are rejected with 401.
 
   responses:
     UnauthorizedError:
@@ -1197,6 +1644,19 @@ components:
             forbidden:
               value:
                 error: You do not have permission to modify this resource
+            insufficientPermissions:
+              value:
+                error: Insufficient permissions
+    InternalServerError:
+      description: Unexpected server error
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ApiErrorResponse'
+          examples:
+            generic:
+              value:
+                error: Internal server error
 
   schemas:
     MediaType:
@@ -1379,6 +1839,81 @@ components:
           items:
             $ref: '#/components/schemas/MediaListItem'
 
+    DiscoverTmdbMetadata:
+      type: object
+      required:
+        - title
+        - year
+        - overview
+        - posterUrl
+      properties:
+        title:
+          type: string
+          example: Fight Club
+        year:
+          type: integer
+          nullable: true
+          example: 1999
+        overview:
+          type: string
+          example: An insomniac office worker crosses paths with a soap maker.
+        posterUrl:
+          type: string
+          nullable: true
+          example: https://image.tmdb.org/t/p/w500/poster.jpg
+
+    DiscoverFeedItem:
+      type: object
+      required:
+        - tmdbId
+        - mediaType
+        - averageScore
+        - ratingCount
+        - tmdb
+      properties:
+        tmdbId:
+          type: integer
+          minimum: 1
+          example: 550
+        mediaType:
+          $ref: '#/components/schemas/MediaType'
+        averageScore:
+          type: number
+          format: float
+          example: 9.5
+        ratingCount:
+          type: integer
+          minimum: 0
+          example: 4
+        tmdb:
+          $ref: '#/components/schemas/DiscoverTmdbMetadata'
+
+    DiscoverFeedResponse:
+      type: object
+      required:
+        - page
+        - pageSize
+        - totalPages
+        - totalResults
+        - results
+      properties:
+        page:
+          type: integer
+          example: 1
+        pageSize:
+          type: integer
+          example: 10
+        totalPages:
+          type: integer
+          example: 1
+        totalResults:
+          type: integer
+          example: 2
+        results:
+          type: array
+          items:
+            $ref: '#/components/schemas/DiscoverFeedItem'
+
     MovieDetailResponse:
       type: object
       required:
@@ -1435,6 +1970,39 @@ components:
         community:
           $ref: '#/components/schemas/CommunitySummary'
 
+    CommunitySummary:
+      type: object
+      description: |
+        Local community ratings and reviews for a TMDB title. Returned as a sibling of TMDB fields
+        on movie and TV show detail responses.
+      required:
+        - averageScore
+        - ratingCount
+        - reviewCount
+        - recentReviews
+      properties:
+        averageScore:
+          type: number
+          format: float
+          nullable: true
+          description: Mean user rating score when at least one rating exists; null when there are no ratings.
+          example: 8.5
+        ratingCount:
+          type: integer
+          minimum: 0
+          description: Number of user ratings for this TMDB id and media type.
+          example: 14
+        reviewCount:
+          type: integer
+          minimum: 0
+          description: Total number of user reviews for this TMDB id and media type.
+          example: 5
+        recentReviews:
+          type: array
+          description: Most recent reviews, newest first (server limits length, typically three items).
+          items:
+            $ref: '#/components/schemas/ReviewResponse'
+
     ShowDetailResponse:
       type: object
       required:
@@ -1490,33 +2058,10 @@ components:
         rating:
           type: number
           format: float
+          description: TMDB vote average for the show.
           example: 8.9
         community:
           $ref: '#/components/schemas/CommunitySummary'
-
-    CommunitySummary:
-      type: object
-      required:
-        - averageScore
-        - ratingCount
-        - reviewCount
-        - recentReviews
-      properties:
-        averageScore:
-          type: number
-          format: float
-          nullable: true
-          example: 7.5
-        ratingCount:
-          type: integer
-          example: 42
-        reviewCount:
-          type: integer
-          example: 12
-        recentReviews:
-          type: array
-          items:
-            $ref: '#/components/schemas/ReviewResponse'
 
     IssueCreateRequest:
       type: object
@@ -1557,6 +2102,85 @@ components:
           type: string
           format: date-time
           example: '2026-05-01T12:00:00.000Z'
+
+    IssueAdminResponse:
+      type: object
+      required:
+        - id
+        - title
+        - description
+        - reproductionSteps
+        - reporterContact
+        - status
+        - createdAt
+        - updatedAt
+      properties:
+        id:
+          type: integer
+          example: 1
+        title:
+          type: string
+          example: App crashes on login
+        description:
+          type: string
+          example: Clicking the login button causes a 500 error.
+        reproductionSteps:
+          type: string
+          nullable: true
+          example: "1. Open the app\n2. Navigate to login\n3. Click the login button"
+        reporterContact:
+          type: string
+          nullable: true
+          example: reporter@example.com
+        status:
+          type: string
+          enum: [open, in_progress, resolved, closed]
+          example: open
+        createdAt:
+          type: string
+          format: date-time
+          example: '2026-05-01T12:00:00.000Z'
+        updatedAt:
+          type: string
+          format: date-time
+          example: '2026-05-01T12:00:00.000Z'
+
+    IssueAdminListResponse:
+      type: object
+      required:
+        - page
+        - pageSize
+        - totalPages
+        - totalResults
+        - results
+      properties:
+        page:
+          type: integer
+          example: 1
+        pageSize:
+          type: integer
+          example: 10
+        totalPages:
+          type: integer
+          example: 1
+        totalResults:
+          type: integer
+          example: 1
+        results:
+          type: array
+          items:
+            $ref: '#/components/schemas/IssueAdminResponse'
+
+    IssueUpdateRequest:
+      type: object
+      description: >
+        Partial-merge update payload. Fields that are omitted are left unchanged.
+        An empty body is valid and returns the unchanged issue with 200.
+      properties:
+        status:
+          type: string
+          enum: [open, in_progress, resolved, closed]
+          example: in_progress
 
     RatingResponse:
       type: object

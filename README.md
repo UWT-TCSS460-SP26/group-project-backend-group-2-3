@@ -8,6 +8,7 @@ Express and TypeScript API for the Movie and TV Review Platform group project.
 - API docs: `GET /api-docs`
 - Versioned API base: `/v1/*` (also accessible as `/api/v1/*` and `/*`)
 - Bug reports: `POST /v1/issues` (public — no auth required)
+- Discovery feed: `GET /v1/discover/top-rated` (public)
 
 Local docs are available at [http://localhost:3000/api-docs](http://localhost:3000/api-docs).
 
@@ -24,8 +25,46 @@ Copy `.env.example` to `.env` for local development and fill in:
 
 - `TMDB_API_KEY` for Sprint 1 TMDB proxy routes.
 - `DATABASE_URL` for the local PostgreSQL database used by Prisma.
-- `AUTH_ISSUER` and `API_AUDIENCE` for Auth2 bearer token verification.
+- `AUTH_ISSUER=https://tcss-460-iam.onrender.com` and `API_AUDIENCE=group-2-api` for Auth² bearer token verification.
 - `CORS_ALLOWED_ORIGINS` as a comma-separated list of browser origins allowed to call the API.
+
+## Auth² Token Contract
+
+Mutation and admin routes require an Auth² OIDC bearer token (RS256, validated against the issuer JWKS).
+
+| Field    | Value                               |
+| -------- | ----------------------------------- |
+| Issuer   | `https://tcss-460-iam.onrender.com` |
+| Audience | `group-2-api`                       |
+
+Mint a token at the TCSS 460 Auth² Token Playground (the issuer URL above), then send it as
+`Authorization: Bearer <token>`. Tokens whose `iss` does not match the issuer or whose `aud`
+does not contain `group-2-api` are rejected with 401.
+
+## Partner CORS Allowlist
+
+The deployed API accepts browser preflight from these origins:
+
+- `http://localhost:3000` — local frontend / docs
+- `http://localhost:5173` — partner consumer-app dev origin (Vite default; reserved for the
+  downstream team building against this API)
+
+To add a partner's production origin, append it to `CORS_ALLOWED_ORIGINS` (comma-separated)
+in the deployment environment and redeploy. The CORS middleware passes the `Authorization`
+header through preflight, so the partner's first authenticated call from an allowlisted origin
+is not blocked by the browser.
+
+Verify a new origin locally:
+
+```bash
+curl -i -X OPTIONS \
+  -H 'Origin: http://localhost:5173' \
+  -H 'Access-Control-Request-Method: GET' \
+  -H 'Access-Control-Request-Headers: Authorization' \
+  http://localhost:3000/v1/movies/popular
+```
+
+The response should include `Access-Control-Allow-Origin: http://localhost:5173`.
 
 ## Sprint 2 Database Setup
 
@@ -48,6 +87,27 @@ the updated `prisma/schema.prisma` plus the generated `prisma/migrations/...` fo
 changes, update `prisma/seed.ts` and rerun `npx prisma db seed`; the seed script should remain safe
 to run more than once on a teammate's local database.
 
+## Running the Tests
+
+The test suite needs a local PostgreSQL database. The fastest way to get one is via Docker:
+
+```bash
+# 1. Install dependencies
+npm install
+
+# 2. Start a local Postgres (Docker required — runs on port 5433)
+docker compose up -d
+
+# 3. Apply migrations and generate the Prisma client
+npx prisma migrate deploy
+npx prisma generate
+
+# 4. Run the tests
+npm test
+```
+
+Tests fall back to sensible defaults via `tests/setup.ts`, so a `.env` file is not required just to run them. If you already have your own Postgres running, set `DATABASE_URL` in `.env` to point at it instead of using `docker compose`.
+
 ## Route and Controller Layout
 
 The project now uses v1 as the single active API surface:
@@ -57,6 +117,18 @@ The project now uses v1 as the single active API surface:
 - `src/controllers/v1/*.ts` is used where handlers are split from routes.
 - Movie search uses `GET /v1/movies/search?title=...`.
 - TV-show routes use `/v1/tv-shows`.
+
+## Sprint 4 Discovery Route
+
+Sprint 4 ships `GET /v1/discover/top-rated` as the required combined discovery route. We did not
+add `/v1/discover/most-reviewed` in this sprint.
+
+The route aggregates rankings in PostgreSQL first, then fetches TMDB metadata live per request
+with one TMDB detail call per ranked item on the current page. Missing or temporarily unavailable
+TMDB items are skipped with a warning log instead of failing the whole response.
+
+This is intentionally a live-per-request strategy for Sprint 4. TODO: revisit caching or a
+materialized view if page latency becomes too high under real usage.
 
 ## Shared Contracts
 
@@ -83,3 +155,7 @@ The project now uses v1 as the single active API surface:
 ## Deployed URL
 
 `https://group-2-9289.onrender.com/`
+
+Production deployment runs on Render with a hosted PostgreSQL database. The Render build command
+installs dependencies, generates Prisma Client, applies committed migrations with
+`npx prisma migrate deploy`, and compiles TypeScript before starting the API with `npm start`.

@@ -26,11 +26,35 @@ export const createExpectedApiError = (
   body: createApiErrorResponse(message),
 });
 
+const isJsonParseError = (error: unknown): boolean => {
+  if (!(error instanceof SyntaxError) || typeof error !== 'object' || error === null) {
+    return false;
+  }
+
+  const { status, statusCode, type } = error as {
+    status?: unknown;
+    statusCode?: unknown;
+    type?: unknown;
+  };
+
+  return (
+    (status === HTTP_STATUS.badRequest || statusCode === HTTP_STATUS.badRequest) &&
+    type === 'entity.parse.failed'
+  );
+};
+
 export const mapErrorToApiResponse = (error: unknown): MappedApiError => {
   if (error instanceof HttpError) {
     return {
       statusCode: error.statusCode,
       body: createApiErrorResponse(error.message),
+    };
+  }
+
+  if (isJsonParseError(error)) {
+    return {
+      statusCode: HTTP_STATUS.badRequest,
+      body: createApiErrorResponse('Invalid JSON body'),
     };
   }
 

@@ -10,6 +10,24 @@ jobs:
   lint-and-test:
     runs-on: ubuntu-latest
 
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: password
+          POSTGRES_DB: tcss460
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres -d tcss460"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+    env:
+      DATABASE_URL: postgresql://postgres:password@localhost:5432/tcss460?schema=public
+
     steps:
       - uses: actions/checkout@v5
 
@@ -19,6 +37,12 @@ jobs:
           cache: npm
 
       - run: npm ci
+
+      - name: Generate Prisma Client
+        run: npx prisma generate
+
+      - name: Apply Prisma migrations
+        run: npx prisma migrate deploy
 
       - name: Format Check
         run: npm run format:check
