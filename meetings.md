@@ -245,17 +245,22 @@ The group finished setting initial team roles, communication expectations, meeti
 - OpenAPI: Sprint 4 routes and Auth2 issuer/audience contract are present in `openapi.yaml`.
 - README: partner-facing handoff sections were completed for Sprint 4.
 
-### Deferred post-merge production checklist
+### Post-deploy production checklist status (May 11, 2026)
 
-- Render currently serves Sprint 3 (`main`), so Sprint 4 production smoke checks were intentionally deferred in this branch.
-- After merging Sprint 4 to `main` and deploying Render, run smoke checks for:
-- public routes (`/health`, `/v1/movies/popular`, `/v1/issues`, `/v1/discover/top-rated`);
-- protected user routes with a valid user token (`/v1/me/ratings`, `/v1/me/reviews`);
-- protected admin routes with a valid admin token (`GET/PATCH/DELETE /v1/issues` including invalid-status PATCH `400`);
-- deployed CORS preflight from `http://localhost:5173` with `Authorization` header.
+- Sprint 4 deployment status on Render was confirmed by checking deployed `openapi.json` for `/v1/me/ratings`.
+- Public smoke checks passed on `https://group-2-9289.onrender.com`:
+- `GET /health` returned 200.
+- `GET /v1/movies/popular` returned 200.
+- `GET /v1/movies/550` returned 200 with `community` object present.
+- `GET /v1/discover/top-rated` returned 200.
+- `POST /v1/issues` returned 201.
+- Deployed CORS preflight passed from `http://localhost:5173` with `Authorization` header (204 + `Access-Control-Allow-Origin`).
+- Remaining deployed auth smoke to record:
+- protected user routes with valid user token (`/v1/me/ratings`, `/v1/me/reviews`);
+- protected admin routes with valid admin token (`GET/PATCH/DELETE /v1/issues`, plus invalid-status PATCH `400`).
 
 ### Final outcome and risks
 
 - Go/no-go decision for branch promotion: go for merge to `main`.
 - Sprint 4 local integration scope is complete and gate-clean on `rudolfs-branch`.
-- Remaining release risk: production verification is still pending until Render is updated with Sprint 4 commits and token-based smoke tests are executed on the deployed environment.
+- Remaining release risk: deployed admin-route verification depends on obtaining an Auth2 token whose role claim is `admin` (or higher); until then, only public and non-admin auth flows are fully evidenced in production.
