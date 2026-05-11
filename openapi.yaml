@@ -72,7 +72,11 @@ paths:
     get:
       tags: [Discover]
       summary: List top-rated community picks
-      description: Returns a public discovery feed ranked by average local rating, using a SQL aggregate over local ratings and live TMDB metadata enrichment for each item on the current page.
+      description: >
+        Returns a public discovery feed ranked by average local rating, using a SQL aggregate over local
+        ratings and live TMDB metadata enrichment for each item on the current page. Each item is a title-level
+        rollup (`averageScore`, `ratingCount`, TMDB metadata only); it does not embed individual rating rows
+        or per-rater `author` objects, which is intentional for this aggregate feed.
       parameters:
         - in: query
           name: page
@@ -305,6 +309,34 @@ paths:
                       ratingCount: 42
                       reviewCount: 12
                       recentReviews: []
+                successWithRecentReviews:
+                  summary: Movie detail with recent community reviews (each includes author)
+                  value:
+                    id: 550
+                    title: Fight Club
+                    year: 1999
+                    posterUrl: https://image.tmdb.org/t/p/w500/poster.jpg
+                    backdropUrl: https://image.tmdb.org/t/p/w780/backdrop.jpg
+                    overview: An insomniac office worker crosses paths with a soap maker.
+                    genres: [Drama]
+                    runtimeMinutes: 139
+                    status: Released
+                    rating: 8.4
+                    community:
+                      averageScore: 8.0
+                      ratingCount: 10
+                      reviewCount: 3
+                      recentReviews:
+                        - id: 1201
+                          mediaType: movie
+                          title: Still relevant
+                          body: >-
+                            The performances and editing hold up; worth a rewatch even years later.
+                          createdAt: '2026-05-01T12:00:00.000Z'
+                          updatedAt: '2026-05-01T12:00:00.000Z'
+                          author:
+                            id: 12
+                            username: moviefan
         '404':
           description: Movie not found or invalid movie ID
           content:
@@ -1772,15 +1804,21 @@ components:
 
     UserContentAuthor:
       type: object
+      description: >
+        Public author surface on every review and rating response. The `username` value is a display label:
+        it uses the stored username when non-empty after trimming; otherwise trimmed first and last name, or
+        `user-` plus the first eight characters of the user's external subject id.
       required:
         - id
         - username
       properties:
         id:
           type: integer
-          example: 1
+          description: Local database user id for the author.
+          example: 42
         username:
           type: string
+          description: Resolved display name for the author (see schema description for fallback rules).
           example: reviews-int-owner
 
     ReviewResponse:
@@ -2096,7 +2134,9 @@ components:
           example: 5
         recentReviews:
           type: array
-          description: Most recent reviews, newest first (server limits length, typically three items).
+          description: >
+            Most recent reviews, newest first (server limits length, typically three items). Each entry
+            matches ReviewResponse, including an `author` object with resolved display `username`.
           items:
             $ref: '#/components/schemas/ReviewResponse'
 

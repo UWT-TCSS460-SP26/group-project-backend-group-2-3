@@ -3,10 +3,11 @@ import {
   RatingResponse,
   ReviewRecordWithAuthor,
   ReviewResponse,
-  UserContentAuthorRecord,
+  toUserContentAuthorResponse,
+  UserContentAuthorSource,
 } from '../../src/transformers/user-content';
 
-type AuthorOverrides = Partial<UserContentAuthorRecord>;
+type AuthorOverrides = Partial<UserContentAuthorSource>;
 type RatingRecordOverrides = Partial<Omit<RatingRecordWithAuthor, 'user'>> & {
   user?: AuthorOverrides;
 };
@@ -29,9 +30,12 @@ export const USER_CONTENT_TEST_IDENTITIES = {
 
 export const buildUserContentAuthor = (
   overrides: AuthorOverrides = {}
-): UserContentAuthorRecord => ({
+): UserContentAuthorSource => ({
   id: 1,
   username: 'alice',
+  firstName: null,
+  lastName: null,
+  subjectId: 'auth0|test-subject-id-abcdefghijklmnopqrstuvwxyz',
   ...overrides,
 });
 
@@ -57,7 +61,7 @@ export const buildRatingResponse = (overrides: RatingRecordOverrides = {}): Rati
     score: record.score,
     createdAt: record.createdAt.toISOString(),
     updatedAt: record.updatedAt.toISOString(),
-    author: buildUserContentAuthor(record.user),
+    author: toUserContentAuthorResponse(record.user),
   };
 };
 
@@ -88,7 +92,7 @@ export const buildReviewResponse = (overrides: ReviewRecordOverrides = {}): Revi
     body: record.body,
     createdAt: record.createdAt.toISOString(),
     updatedAt: record.updatedAt.toISOString(),
-    author: buildUserContentAuthor(record.user),
+    author: toUserContentAuthorResponse(record.user),
   };
 };
 
