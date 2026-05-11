@@ -638,12 +638,23 @@ paths:
               schema:
                 $ref: '#/components/schemas/ApiErrorResponse'
               examples:
-                invalidMediaType:
+                invalidPage:
                   value:
-                    error: Query parameter mediaType must be either movie or show
+                    error: Query parameter page must be a positive integer
                 invalidPageSize:
                   value:
                     error: Query parameter pageSize must be 50 or less
+                invalidMediaType:
+                  value:
+                    error: Query parameter mediaType must be either movie or show
+                invalidTmdbId:
+                  value:
+                    error: Query parameter tmdbId must be a positive integer
+                invalidUserId:
+                  value:
+                    error: Query parameter userId must be a positive integer
+        '500':
+          $ref: '#/components/responses/InternalServerError'
     post:
       tags: [Reviews]
       summary: Create review
@@ -692,9 +703,18 @@ paths:
                 invalidTmdbId:
                   value:
                     error: tmdbId must be a positive integer
+                invalidMediaType:
+                  value:
+                    error: mediaType must be either movie or show
+                bodyRequired:
+                  value:
+                    error: body is required
                 invalidBody:
                   value:
                     error: body must be between 10 and 5000 characters
+                titleTooLong:
+                  value:
+                    error: title must be 120 characters or fewer
         '401':
           $ref: '#/components/responses/UnauthorizedError'
         '409':
@@ -707,6 +727,8 @@ paths:
                 duplicate:
                   value:
                     error: You have already reviewed this item
+        '500':
+          $ref: '#/components/responses/InternalServerError'
 
   /v1/reviews/{id}:
     get:
@@ -751,7 +773,8 @@ paths:
                 notFound:
                   value:
                     error: Review not found
-
+        '500':
+          $ref: '#/components/responses/InternalServerError'
     put:
       tags: [Reviews]
       summary: Update review
@@ -785,6 +808,18 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ReviewResponse'
+              examples:
+                success:
+                  value:
+                    id: 101
+                    mediaType: movie
+                    title: Updated title
+                    body: This updated review has enough detail for validation to pass.
+                    createdAt: '2026-04-26T18:30:00.000Z'
+                    updatedAt: '2026-04-27T10:00:00.000Z'
+                    author:
+                      id: 1
+                      username: reviews-int-owner
         '400':
           description: Invalid review payload
           content:
@@ -792,9 +827,15 @@ paths:
               schema:
                 $ref: '#/components/schemas/ApiErrorResponse'
               examples:
+                bodyRequired:
+                  value:
+                    error: body is required
                 invalidBody:
                   value:
                     error: body must be between 10 and 5000 characters
+                titleTooLong:
+                  value:
+                    error: title must be 120 characters or fewer
         '401':
           $ref: '#/components/responses/UnauthorizedError'
         '403':
@@ -809,6 +850,42 @@ paths:
                 notFound:
                   value:
                     error: Review not found
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+    delete:
+      tags: [Reviews]
+      summary: Delete review
+      description: Deletes a review owned by the authenticated user or an admin.
+      security:
+        - bearerAuth: []
+      parameters:
+        - in: path
+          name: id
+          required: true
+          description: Positive review id.
+          schema:
+            type: integer
+            minimum: 1
+          example: 101
+      responses:
+        '204':
+          description: Review deleted
+        '401':
+          $ref: '#/components/responses/UnauthorizedError'
+        '403':
+          $ref: '#/components/responses/ForbiddenError'
+        '404':
+          description: Review not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiErrorResponse'
+              examples:
+                notFound:
+                  value:
+                    error: Review not found
+        '500':
+          $ref: '#/components/responses/InternalServerError'
 
   /v1/me/reviews:
     get:
@@ -882,6 +959,8 @@ paths:
                     error: 'Query parameter sort must be one of: createdAt:desc, createdAt:asc'
         '401':
           $ref: '#/components/responses/UnauthorizedError'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
 
   /v1/ratings:
     get:
@@ -971,6 +1050,14 @@ paths:
                 invalidMediaType:
                   value:
                     error: Query parameter mediaType must be either movie or show
+                invalidTmdbId:
+                  value:
+                    error: Query parameter tmdbId must be a positive integer
+                invalidUserId:
+                  value:
+                    error: Query parameter userId must be a positive integer
+        '500':
+          $ref: '#/components/responses/InternalServerError'
 
     post:
       tags: [Ratings]
@@ -1037,6 +1124,8 @@ paths:
                 duplicate:
                   value:
                     error: You have already rated this item
+        '500':
+          $ref: '#/components/responses/InternalServerError'
 
   /v1/ratings/{id}:
     get:
@@ -1078,6 +1167,8 @@ paths:
                 notFound:
                   value:
                     error: Rating not found
+        '500':
+          $ref: '#/components/responses/InternalServerError'
 
     put:
       tags: [Ratings]
@@ -1143,6 +1234,8 @@ paths:
                 notFound:
                   value:
                     error: Rating not found
+        '500':
+          $ref: '#/components/responses/InternalServerError'
 
     delete:
       tags: [Ratings]
@@ -1175,6 +1268,8 @@ paths:
                 notFound:
                   value:
                     error: Rating not found
+        '500':
+          $ref: '#/components/responses/InternalServerError'
 
   /v1/issues:
     post:
@@ -1230,6 +1325,8 @@ paths:
                 badFieldType:
                   value:
                     error: reproductionSteps must be a string
+        '500':
+          $ref: '#/components/responses/InternalServerError'
     get:
       tags: [Issues]
       summary: List bug reports (admin)
