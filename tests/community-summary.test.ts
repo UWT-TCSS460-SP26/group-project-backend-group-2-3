@@ -76,6 +76,31 @@ describe('getCommunitySummary', () => {
     });
   });
 
+  it('recentReviews include author with display-name fallback when username is blank', async () => {
+    mockAggregate.mockResolvedValueOnce({
+      _avg: { score: 8 },
+      _count: { _all: 1 },
+    });
+    mockReviewCount.mockResolvedValueOnce(1);
+    mockFindMany.mockResolvedValueOnce([
+      buildReviewRecord({
+        id: 99,
+        user: {
+          id: 5,
+          username: '',
+          firstName: 'Pat',
+          lastName: 'Kim',
+          subjectId: 'auth0|unused-subject',
+        },
+      }),
+    ]);
+
+    const summary = await getCommunitySummary(1, 'movie');
+
+    expect(summary.recentReviews).toHaveLength(1);
+    expect(summary.recentReviews[0].author).toEqual({ id: 5, username: 'Pat Kim' });
+  });
+
   it('queries show community data and honors a custom recent-review limit', async () => {
     mockAggregate.mockResolvedValueOnce({
       _avg: { score: 9 },
@@ -101,6 +126,9 @@ describe('getCommunitySummary', () => {
           select: {
             id: true,
             username: true,
+            firstName: true,
+            lastName: true,
+            subjectId: true,
           },
         },
       },
