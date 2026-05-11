@@ -29,6 +29,10 @@ interface RankedDiscoveryCountRow {
   totalResults: number;
 }
 
+const writeWarning = (message: string): void => {
+  process.stderr.write(`${message}\n`);
+};
+
 const toDiscoverTmdbMetadata = (
   mediaType: MediaType,
   details: TmdbMovieDetails | TmdbShowDetails,
@@ -71,14 +75,14 @@ const fetchTmdbMetadata = async (
         error.statusCode === HTTP_STATUS.notFound ||
         error.statusCode === HTTP_STATUS.badGateway
       ) {
-        console.warn(
+        writeWarning(
           `[discover/top-rated] Skipping ${mediaType} ${tmdbId} because TMDB metadata was unavailable: ${error.message}`
         );
         return null;
       }
     }
 
-    console.warn(
+    writeWarning(
       `[discover/top-rated] Skipping ${mediaType} ${tmdbId} because TMDB metadata lookup failed`
     );
     return null;

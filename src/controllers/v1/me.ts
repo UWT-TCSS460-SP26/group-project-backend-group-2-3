@@ -21,6 +21,10 @@ interface TmdbMeta {
   overview: string;
 }
 
+const writeWarning = (message: string): void => {
+  process.stderr.write(`${message}\n`);
+};
+
 const fetchTmdbMeta = async (
   tmdbId: number,
   mediaType: 'movie' | 'show'
@@ -45,7 +49,8 @@ const fetchTmdbMeta = async (
       };
     }
   } catch (error) {
-    console.warn(`TMDB fetch failed for ${mediaType} ${tmdbId}:`, error);
+    const reason = error instanceof Error ? error.message : 'Unknown TMDB error';
+    writeWarning(`TMDB fetch failed for ${mediaType} ${tmdbId}: ${reason}`);
     return null;
   }
 };

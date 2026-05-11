@@ -104,9 +104,13 @@ describe('GET /v1/issues (admin)', () => {
   });
 
   it('200 status filter returns only matching rows', async () => {
-    mockTransaction.mockImplementation(async (calls: Promise<unknown>[]) => await Promise.all(calls));
+    mockTransaction.mockImplementation(
+      async (calls: Promise<unknown>[]) => await Promise.all(calls)
+    );
     mockCount.mockImplementation(({ where }) =>
-      Promise.resolve(issueRows.filter((issue) => !where?.status || issue.status === where.status).length)
+      Promise.resolve(
+        issueRows.filter((issue) => !where?.status || issue.status === where.status).length
+      )
     );
     mockFindMany.mockImplementation(({ where }) =>
       Promise.resolve(issueRows.filter((issue) => !where?.status || issue.status === where.status))
@@ -116,11 +120,15 @@ describe('GET /v1/issues (admin)', () => {
 
     expect(response.status).toBe(200);
     expect(response.body.results).toHaveLength(2);
-    expect(response.body.results.every((issue: { status: string }) => issue.status === 'open')).toBe(true);
+    expect(
+      response.body.results.every((issue: { status: string }) => issue.status === 'open')
+    ).toBe(true);
   });
 
   it('200 default sort is createdAt:desc', async () => {
-    mockTransaction.mockImplementation(async (calls: Promise<unknown>[]) => await Promise.all(calls));
+    mockTransaction.mockImplementation(
+      async (calls: Promise<unknown>[]) => await Promise.all(calls)
+    );
     mockCount.mockResolvedValue(0);
     mockFindMany.mockResolvedValue([]);
 

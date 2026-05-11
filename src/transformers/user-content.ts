@@ -124,7 +124,10 @@ export const resolveUserContentAuthorDisplayName = (
     return fromUsername;
   }
 
-  const fullName = [trimStr(user.firstName), trimStr(user.lastName)].filter(Boolean).join(' ').trim();
+  const fullName = [trimStr(user.firstName), trimStr(user.lastName)]
+    .filter(Boolean)
+    .join(' ')
+    .trim();
   if (fullName) {
     return fullName;
   }
@@ -132,7 +135,9 @@ export const resolveUserContentAuthorDisplayName = (
   return `user-${user.subjectId.slice(0, 8)}`;
 };
 
-export const toUserContentAuthorResponse = (user: UserContentAuthorSource): UserContentAuthorResponse => ({
+export const toUserContentAuthorResponse = (
+  user: UserContentAuthorSource
+): UserContentAuthorResponse => ({
   id: user.id,
   username: resolveUserContentAuthorDisplayName(user),
 });

@@ -70,10 +70,12 @@ beforeEach(() => {
 
   mockUserFindUnique.mockResolvedValue(mockLocalUser);
 
-  mockFetch.mockResolvedValue({
-    ok: true,
-    json: async () => mockTmdbMovieJson,
-  } as Response);
+  mockFetch.mockResolvedValue(
+    new globalThis.Response(JSON.stringify(mockTmdbMovieJson), {
+      status: 200,
+      headers: { 'Content-Type': 'application/json' },
+    })
+  );
 });
 
 // ---------------------------------------------------------------------------
@@ -108,7 +110,7 @@ describe('GET /api/v1/me/ratings', () => {
     expect(item.tmdb.posterUrl).toContain('/poster.jpg');
   });
 
-  it('200 — ignores ?userId=999 and returns the token caller\'s ratings', async () => {
+  it("200 — ignores ?userId=999 and returns the token caller's ratings", async () => {
     mockTransaction.mockResolvedValue([1, [mockRatingRow]]);
 
     const res = await request(app)
@@ -118,9 +120,7 @@ describe('GET /api/v1/me/ratings', () => {
     expect(res.status).toBe(200);
     expect(res.body.results[0].author.id).toBe(1);
     expect(mockTransaction).toHaveBeenCalledWith(
-      expect.arrayContaining([
-        expect.objectContaining({}),
-      ])
+      expect.arrayContaining([expect.objectContaining({})])
     );
   });
 
@@ -143,11 +143,12 @@ describe('GET /api/v1/me/ratings', () => {
 
   it('200 — TMDB upstream failure returns rating with tmdb: null', async () => {
     mockTransaction.mockResolvedValue([1, [mockRatingRow]]);
-    mockFetch.mockResolvedValue({
-      ok: false,
-      status: 503,
-      json: async () => ({ status_message: 'Service unavailable' }),
-    } as Response);
+    mockFetch.mockResolvedValue(
+      new globalThis.Response(JSON.stringify({ status_message: 'Service unavailable' }), {
+        status: 503,
+        headers: { 'Content-Type': 'application/json' },
+      })
+    );
 
     const res = await request(app)
       .get('/api/v1/me/ratings')

@@ -101,12 +101,10 @@ describe('listTopRatedDiscovery', () => {
     const response = createResponse();
     const next = jest.fn() as NextFunction;
 
-    queryRawMock
-      .mockResolvedValueOnce([{ totalResults: 2 }])
-      .mockResolvedValueOnce([
-        { tmdbId: 550, mediaType: 'movie', averageScore: 9.5, ratingCount: 4 },
-        { tmdbId: 1396, mediaType: 'show', averageScore: 9.0, ratingCount: 5 },
-      ]);
+    queryRawMock.mockResolvedValueOnce([{ totalResults: 2 }]).mockResolvedValueOnce([
+      { tmdbId: 550, mediaType: 'movie', averageScore: 9.5, ratingCount: 4 },
+      { tmdbId: 1396, mediaType: 'show', averageScore: 9.0, ratingCount: 5 },
+    ]);
     jest.spyOn(tmdbClient, 'getMovieDetails').mockResolvedValue({
       backdrop_path: '/backdrop.jpg',
       genres: [],
@@ -151,12 +149,10 @@ describe('listTopRatedDiscovery', () => {
     const response = createResponse();
     const next = jest.fn() as NextFunction;
 
-    queryRawMock
-      .mockResolvedValueOnce([{ totalResults: 2 }])
-      .mockResolvedValueOnce([
-        { tmdbId: 550, mediaType: 'movie', averageScore: 9.5, ratingCount: 4 },
-        { tmdbId: 1396, mediaType: 'show', averageScore: 9.0, ratingCount: 5 },
-      ]);
+    queryRawMock.mockResolvedValueOnce([{ totalResults: 2 }]).mockResolvedValueOnce([
+      { tmdbId: 550, mediaType: 'movie', averageScore: 9.5, ratingCount: 4 },
+      { tmdbId: 1396, mediaType: 'show', averageScore: 9.0, ratingCount: 5 },
+    ]);
     jest
       .spyOn(tmdbClient, 'getMovieDetails')
       .mockRejectedValue(new HttpError(502, 'TMDB request failed with status 500'));
