@@ -33,12 +33,16 @@ tags:
     description: Movie routes proxied from TMDB
   - name: TV Shows
     description: TV show routes proxied from TMDB
+  - name: Discover
+    description: Public community discovery feeds built from SQL aggregates plus TMDB metadata
   - name: Ratings
     description: User ratings for movies and TV shows
   - name: Reviews
     description: User review routes for movies and shows
   - name: Issues
     description: Public bug report intake — no authentication required
+  - name: Me
+    description: Authenticated user's own content (ratings, future reviews)
 
 paths:
   /health:
@@ -63,6 +67,75 @@ paths:
                   service:
                     type: string
                     example: group-project-backend-group-2-3
+
+  /v1/discover/top-rated:
+    get:
+      tags: [Discover]
+      summary: List top-rated community picks
+      description: Returns a public discovery feed ranked by average local rating, using a SQL aggregate over local ratings and live TMDB metadata enrichment for each item on the current page.
+      parameters:
+        - in: query
+          name: page
+          required: false
+          description: Positive integer page number. Defaults to 1.
+          schema:
+            type: integer
+            minimum: 1
+            default: 1
+          example: 1
+        - in: query
+          name: pageSize
+          required: false
+          description: Positive integer page size up to 50. Defaults to 10.
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 50
+            default: 10
+          example: 10
+      responses:
+        '200':
+          description: Paginated list of top-rated community-ranked items
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DiscoverFeedResponse'
+              examples:
+                success:
+                  value:
+                    page: 1
+                    pageSize: 2
+                    totalPages: 1
+                    totalResults: 2
+                    results:
+                      - tmdbId: 550
+                        mediaType: movie
+                        averageScore: 9.5
+                        ratingCount: 4
+                        tmdb:
+                          title: Fight Club
+                          year: 1999
+                          overview: An insomniac office worker crosses paths with a soap maker.
+                          posterUrl: https://image.tmdb.org/t/p/w500/poster.jpg
+                      - tmdbId: 1396
+                        mediaType: show
+                        averageScore: 9
+                        ratingCount: 5
+                        tmdb:
+                          title: Breaking Bad
+                          year: 2008
+                          overview: A high school chemistry teacher turned meth producer.
+                          posterUrl: https://image.tmdb.org/t/p/w500/poster.jpg
+        '400':
+          description: Invalid query parameters
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiErrorResponse'
+              examples:
+                invalidPageSize:
+                  value:
+                    error: Query parameter pageSize must be 50 or less
 
   /v1/movies/search:
     get:
@@ -565,12 +638,23 @@ paths:
               schema:
                 $ref: '#/components/schemas/ApiErrorResponse'
               examples:
-                invalidMediaType:
+                invalidPage:
                   value:
-                    error: Query parameter mediaType must be either movie or show
+                    error: Query parameter page must be a positive integer
                 invalidPageSize:
                   value:
                     error: Query parameter pageSize must be 50 or less
+                invalidMediaType:
+                  value:
+                    error: Query parameter mediaType must be either movie or show
+                invalidTmdbId:
+                  value:
+                    error: Query parameter tmdbId must be a positive integer
+                invalidUserId:
+                  value:
+                    error: Query parameter userId must be a positive integer
+        '500':
+          $ref: '#/components/responses/InternalServerError'
     post:
       tags: [Reviews]
       summary: Create review
@@ -619,9 +703,18 @@ paths:
                 invalidTmdbId:
                   value:
                     error: tmdbId must be a positive integer
+                invalidMediaType:
+                  value:
+                    error: mediaType must be either movie or show
+                bodyRequired:
+                  value:
+                    error: body is required
                 invalidBody:
                   value:
                     error: body must be between 10 and 5000 characters
+                titleTooLong:
+                  value:
+                    error: title must be 120 characters or fewer
         '401':
           $ref: '#/components/responses/UnauthorizedError'
         '409':
@@ -634,6 +727,8 @@ paths:
                 duplicate:
                   value:
                     error: You have already reviewed this item
+        '500':
+          $ref: '#/components/responses/InternalServerError'
 
   /v1/reviews/{id}:
     get:
@@ -678,6 +773,8 @@ paths:
                 notFound:
                   value:
                     error: Review not found
+        '500':
+          $ref: '#/components/responses/InternalServerError'
     put:
       tags: [Reviews]
       summary: Update review
@@ -711,6 +808,18 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ReviewResponse'
+              examples:
+                success:
+                  value:
+                    id: 101
+                    mediaType: movie
+                    title: Updated title
+                    body: This updated review has enough detail for validation to pass.
+                    createdAt: '2026-04-26T18:30:00.000Z'
+                    updatedAt: '2026-04-27T10:00:00.000Z'
+                    author:
+                      id: 1
+                      username: reviews-int-owner
         '400':
           description: Invalid review payload
           content:
@@ -718,9 +827,15 @@ paths:
               schema:
                 $ref: '#/components/schemas/ApiErrorResponse'
               examples:
+                bodyRequired:
+                  value:
+                    error: body is required
                 invalidBody:
                   value:
                     error: body must be between 10 and 5000 characters
+                titleTooLong:
+                  value:
+                    error: title must be 120 characters or fewer
         '401':
           $ref: '#/components/responses/UnauthorizedError'
         '403':
@@ -735,6 +850,8 @@ paths:
                 notFound:
                   value:
                     error: Review not found
+        '500':
+          $ref: '#/components/responses/InternalServerError'
     delete:
       tags: [Reviews]
       summary: Delete review
@@ -767,6 +884,83 @@ paths:
                 notFound:
                   value:
                     error: Review not found
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+  /v1/me/reviews:
+    get:
+      tags: [Reviews]
+      summary: List my reviews
+      description: Returns the authenticated caller's own reviews. The server identifies the caller from the bearer token only and ignores any caller-supplied userId query parameter.
+      security:
+        - bearerAuth: []
+      parameters:
+        - in: query
+          name: page
+          required: false
+          description: Positive integer page number. Defaults to 1.
+          schema:
+            type: integer
+            minimum: 1
+            default: 1
+          example: 1
+        - in: query
+          name: pageSize
+          required: false
+          description: Positive integer page size up to 50. Defaults to 10.
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 50
+            default: 10
+          example: 10
+        - in: query
+          name: sort
+          required: false
+          description: Sort order for the caller's reviews. Defaults to `createdAt:desc`.
+          schema:
+            type: string
+            enum: ['createdAt:desc', 'createdAt:asc']
+            default: 'createdAt:desc'
+          example: 'createdAt:desc'
+      responses:
+        '200':
+          description: Paginated list of the authenticated user's reviews
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ReviewListResponse'
+              examples:
+                success:
+                  value:
+                    page: 1
+                    pageSize: 1
+                    totalPages: 1
+                    totalResults: 1
+                    results:
+                      - id: 101
+                        mediaType: movie
+                        title: Great watch
+                        body: This movie stayed sharp, focused, and worth revisiting.
+                        createdAt: '2026-04-26T18:30:00.000Z'
+                        updatedAt: '2026-04-26T18:30:00.000Z'
+                        author:
+                          id: 1
+                          username: reviews-int-owner
+        '400':
+          description: Invalid query parameters
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiErrorResponse'
+              examples:
+                invalidSort:
+                  value:
+                    error: 'Query parameter sort must be one of: createdAt:desc, createdAt:asc'
+        '401':
+          $ref: '#/components/responses/UnauthorizedError'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
 
   /v1/ratings:
     get:
@@ -856,6 +1050,14 @@ paths:
                 invalidMediaType:
                   value:
                     error: Query parameter mediaType must be either movie or show
+                invalidTmdbId:
+                  value:
+                    error: Query parameter tmdbId must be a positive integer
+                invalidUserId:
+                  value:
+                    error: Query parameter userId must be a positive integer
+        '500':
+          $ref: '#/components/responses/InternalServerError'
 
     post:
       tags: [Ratings]
@@ -922,6 +1124,8 @@ paths:
                 duplicate:
                   value:
                     error: You have already rated this item
+        '500':
+          $ref: '#/components/responses/InternalServerError'
 
   /v1/ratings/{id}:
     get:
@@ -963,6 +1167,8 @@ paths:
                 notFound:
                   value:
                     error: Rating not found
+        '500':
+          $ref: '#/components/responses/InternalServerError'
 
     put:
       tags: [Ratings]
@@ -1028,6 +1234,8 @@ paths:
                 notFound:
                   value:
                     error: Rating not found
+        '500':
+          $ref: '#/components/responses/InternalServerError'
 
     delete:
       tags: [Ratings]
@@ -1060,6 +1268,8 @@ paths:
                 notFound:
                   value:
                     error: Rating not found
+        '500':
+          $ref: '#/components/responses/InternalServerError'
 
   /v1/issues:
     post:
@@ -1115,6 +1325,8 @@ paths:
                 badFieldType:
                   value:
                     error: reproductionSteps must be a string
+        '500':
+          $ref: '#/components/responses/InternalServerError'
     get:
       tags: [Issues]
       summary: List bug reports (admin)
@@ -1399,6 +1611,92 @@ paths:
         '500':
           $ref: '#/components/responses/InternalServerError'
 
+  /v1/me/ratings:
+    get:
+      tags: [Me]
+      summary: List my ratings
+      description: >
+        Returns a paginated list of the authenticated user's ratings, each enriched with TMDB metadata.
+        The caller is always determined from the JWT — query parameters cannot override identity.
+        If TMDB is unavailable for a given item, the `tmdb` field is `null` rather than failing the whole request.
+      security:
+        - bearerAuth: []
+      parameters:
+        - in: query
+          name: page
+          required: false
+          description: Page number (positive integer). Defaults to 1.
+          schema:
+            type: integer
+            minimum: 1
+            default: 1
+          example: 1
+        - in: query
+          name: pageSize
+          required: false
+          description: Number of results per page (max 50). Defaults to 10.
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 50
+            default: 10
+          example: 10
+      responses:
+        '200':
+          description: Paginated list of enriched ratings
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EnrichedRatingListResponse'
+              examples:
+                success:
+                  value:
+                    page: 1
+                    pageSize: 10
+                    totalPages: 1
+                    totalResults: 1
+                    results:
+                      - id: 1
+                        tmdbId: 550
+                        mediaType: movie
+                        score: 8
+                        createdAt: '2026-01-01T00:00:00.000Z'
+                        updatedAt: '2026-01-01T00:00:00.000Z'
+                        author:
+                          id: 1
+                          username: alice
+                        tmdb:
+                          title: Fight Club
+                          year: 1999
+                          posterUrl: https://image.tmdb.org/t/p/w500/poster.jpg
+                          overview: An insomniac office worker crosses paths with a soap maker.
+                tmdbUnavailable:
+                  summary: TMDB upstream failure — tmdb is null
+                  value:
+                    page: 1
+                    pageSize: 10
+                    totalPages: 1
+                    totalResults: 1
+                    results:
+                      - id: 1
+                        tmdbId: 550
+                        mediaType: movie
+                        score: 8
+                        createdAt: '2026-01-01T00:00:00.000Z'
+                        updatedAt: '2026-01-01T00:00:00.000Z'
+                        author:
+                          id: 1
+                          username: alice
+                        tmdb: null
+        '401':
+          $ref: '#/components/responses/UnauthorizedError'
+        '500':
+          description: Unexpected server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiErrorResponse'
+
 components:
   securitySchemes:
     bearerAuth:
@@ -1637,6 +1935,81 @@ components:
           type: array
           items:
             $ref: '#/components/schemas/MediaListItem'
+
+    DiscoverTmdbMetadata:
+      type: object
+      required:
+        - title
+        - year
+        - overview
+        - posterUrl
+      properties:
+        title:
+          type: string
+          example: Fight Club
+        year:
+          type: integer
+          nullable: true
+          example: 1999
+        overview:
+          type: string
+          example: An insomniac office worker crosses paths with a soap maker.
+        posterUrl:
+          type: string
+          nullable: true
+          example: https://image.tmdb.org/t/p/w500/poster.jpg
+
+    DiscoverFeedItem:
+      type: object
+      required:
+        - tmdbId
+        - mediaType
+        - averageScore
+        - ratingCount
+        - tmdb
+      properties:
+        tmdbId:
+          type: integer
+          minimum: 1
+          example: 550
+        mediaType:
+          $ref: '#/components/schemas/MediaType'
+        averageScore:
+          type: number
+          format: float
+          example: 9.5
+        ratingCount:
+          type: integer
+          minimum: 0
+          example: 4
+        tmdb:
+          $ref: '#/components/schemas/DiscoverTmdbMetadata'
+
+    DiscoverFeedResponse:
+      type: object
+      required:
+        - page
+        - pageSize
+        - totalPages
+        - totalResults
+        - results
+      properties:
+        page:
+          type: integer
+          example: 1
+        pageSize:
+          type: integer
+          example: 10
+        totalPages:
+          type: integer
+          example: 1
+        totalResults:
+          type: integer
+          example: 2
+        results:
+          type: array
+          items:
+            $ref: '#/components/schemas/DiscoverFeedItem'
 
     MovieDetailResponse:
       type: object
@@ -1992,3 +2365,70 @@ components:
           minimum: 1
           maximum: 10
           example: 9
+
+    TmdbMeta:
+      type: object
+      nullable: true
+      required:
+        - title
+        - year
+        - posterUrl
+        - overview
+      properties:
+        title:
+          type: string
+          example: Fight Club
+        year:
+          type: integer
+          nullable: true
+          example: 1999
+        posterUrl:
+          type: string
+          nullable: true
+          example: https://image.tmdb.org/t/p/w500/poster.jpg
+        overview:
+          type: string
+          example: An insomniac office worker crosses paths with a soap maker.
+
+    EnrichedRatingResponse:
+      allOf:
+        - $ref: '#/components/schemas/RatingResponse'
+        - type: object
+          required:
+            - tmdbId
+            - tmdb
+          properties:
+            tmdbId:
+              type: integer
+              example: 550
+            tmdb:
+              nullable: true
+              oneOf:
+                - $ref: '#/components/schemas/TmdbMeta'
+                - type: 'null'
+
+    EnrichedRatingListResponse:
+      type: object
+      required:
+        - page
+        - pageSize
+        - totalPages
+        - totalResults
+        - results
+      properties:
+        page:
+          type: integer
+          example: 1
+        pageSize:
+          type: integer
+          example: 10
+        totalPages:
+          type: integer
+          example: 1
+        totalResults:
+          type: integer
+          example: 1
+        results:
+          type: array
+          items:
+            $ref: '#/components/schemas/EnrichedRatingResponse'
