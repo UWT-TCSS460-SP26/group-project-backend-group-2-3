@@ -1364,7 +1364,7 @@ paths:
       summary: List bug reports (admin)
       description: >
         Admin-gated paginated queue of bug reports. Requires an Auth² bearer token whose role
-        is Admin or higher (Admin, SuperAdmin, Owner). User and Moderator tokens receive 403.
+        is authorized by local database role checks. Token role claims alone are not sufficient.
         Defaults: `page=1`, `pageSize=10` (max `50`), `sort=createdAt:desc`. Optional `status`
         filter restricts results to one IssueStatus value.
       security:
@@ -1457,8 +1457,7 @@ paths:
       tags: [Issues]
       summary: Get bug report by id (admin)
       description: >
-        Admin-gated lookup for a single bug report. Requires an Auth² bearer token with role
-        Admin or higher (Admin, SuperAdmin, Owner).
+        Admin-gated lookup for a single bug report. Requires an Auth² bearer token for identity, with admin authorization enforced by local database role checks.
       security:
         - bearerAuth: []
       parameters:
@@ -1522,7 +1521,7 @@ paths:
         `status` field is mutable. Send a partial body — fields that are omitted
         are left unchanged. An empty body returns the unchanged issue with 200.
         Unknown `status` values are rejected with 400.
-        Requires an Auth² bearer token with role Admin or higher.
+        Requires an Auth² bearer token for identity, with admin authorization enforced by local database role checks.
       security:
         - bearerAuth: []
       parameters:
@@ -1601,7 +1600,7 @@ paths:
       summary: Delete bug report (admin)
       description: >
         Admin-gated delete for a bug report. Returns 204 with an empty body on
-        success. Requires an Auth² bearer token with role Admin or higher.
+        success. Requires an Auth² bearer token for identity, with admin authorization enforced by local database role checks.
       security:
         - bearerAuth: []
       parameters:

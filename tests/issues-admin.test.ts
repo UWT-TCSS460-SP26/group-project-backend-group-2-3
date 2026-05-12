@@ -12,6 +12,9 @@ jest.mock('../src/lib/prisma', () => ({
       count: jest.fn(),
       delete: jest.fn(),
     },
+    user: {
+      findUnique: jest.fn(),
+    },
     $transaction: jest.fn(),
   },
 }));
@@ -20,10 +23,12 @@ const mockFindUnique = prisma.issue.findUnique as jest.Mock;
 const mockFindMany = prisma.issue.findMany as jest.Mock;
 const mockCount = prisma.issue.count as jest.Mock;
 const mockDelete = prisma.issue.delete as jest.Mock;
+const mockUserFindUnique = prisma.user.findUnique as jest.Mock;
 const mockTransaction = prisma.$transaction as jest.Mock;
 
+// Intentionally keep token claim at role=user; local DB role decides admin access.
 const adminHeaders = authHeader(
-  createAccessToken({ sub: 9001, email: 'admin@example.test', role: USER_ROLES.admin })
+  createAccessToken({ sub: 9001, email: 'admin@example.test', role: USER_ROLES.user })
 );
 const userHeaders = authHeader(
   createAccessToken({ sub: 42, email: 'user@example.test', role: USER_ROLES.user })
@@ -64,6 +69,18 @@ const issueRows = [
 
 beforeEach(() => {
   jest.resetAllMocks();
+
+  mockUserFindUnique.mockImplementation(({ where }: { where?: { subjectId?: string } }) => {
+    if (where?.subjectId === 'auth2|test-user-9001') {
+      return Promise.resolve({ id: 9001, role: 'admin' });
+    }
+
+    if (where?.subjectId === 'auth2|test-user-42') {
+      return Promise.resolve({ id: 42, role: 'user' });
+    }
+
+    return Promise.resolve(null);
+  });
 });
 
 describe('GET /v1/issues (admin)', () => {
@@ -83,14 +100,14 @@ describe('GET /v1/issues (admin)', () => {
     expect(response.body.error).toMatch(/invalid/i);
   });
 
-  it('403 when role is user', async () => {
+  it('403 when local user role is user', async () => {
     const response = await request(app).get('/v1/issues').set(userHeaders);
 
     expect(response.status).toBe(403);
     expect(response.body.error).toMatch(/insufficient permissions/i);
   });
 
-  it('200 for admin and returns pagination metadata', async () => {
+  it('200 for local admin and returns pagination metadata', async () => {
     mockTransaction.mockResolvedValue([issueRows.length, issueRows]);
 
     const response = await request(app).get('/v1/issues').set(adminHeaders);
@@ -158,7 +175,7 @@ describe('GET /v1/issues/:id (admin)', () => {
     expect(response.body.error).toMatch(/invalid/i);
   });
 
-  it('403 when role is user', async () => {
+  it('403 when local user role is user', async () => {
     const response = await request(app).get('/v1/issues/1').set(userHeaders);
 
     expect(response.status).toBe(403);
@@ -181,7 +198,7 @@ describe('GET /v1/issues/:id (admin)', () => {
     expect(response.body.error).toMatch(/issue id must be a positive integer/i);
   });
 
-  it('200 for admin', async () => {
+  it('200 for local admin', async () => {
     mockFindUnique.mockResolvedValue(issueRows[0]);
 
     const response = await request(app).get('/v1/issues/1').set(adminHeaders);
@@ -212,7 +229,7 @@ describe('DELETE /v1/issues/:id (admin)', () => {
     expect(response.body.error).toMatch(/invalid/i);
   });
 
-  it('403 when role is user', async () => {
+  it('403 when local user role is user', async () => {
     const response = await request(app).delete('/v1/issues/1').set(userHeaders);
 
     expect(response.status).toBe(403);

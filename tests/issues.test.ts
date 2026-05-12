@@ -17,6 +17,9 @@ jest.mock('../src/lib/prisma', () => ({
       update: jest.fn(),
       delete: jest.fn(),
     },
+    user: {
+      findUnique: jest.fn(),
+    },
     $transaction: jest.fn(),
   },
 }));
@@ -26,16 +29,25 @@ const mockFindUnique = prisma.issue.findUnique as jest.Mock;
 const mockTransaction = prisma.$transaction as jest.Mock;
 const mockUpdate = prisma.issue.update as jest.Mock;
 const mockDelete = prisma.issue.delete as jest.Mock;
+const mockUserFindUnique = prisma.user.findUnique as jest.Mock;
 
 const adminToken = (userId = 1): string =>
   createAccessToken({
     sub: userId,
     email: `admin${userId}@test.com`,
-    role: USER_ROLES.admin satisfies UserRole,
+    role: USER_ROLES.user satisfies UserRole,
   });
 
 beforeEach(() => {
   jest.resetAllMocks();
+
+  mockUserFindUnique.mockImplementation(({ where }: { where?: { subjectId?: string } }) => {
+    if (where?.subjectId && String(where.subjectId).startsWith("auth2|test-user-")) {
+      return Promise.resolve({ id: 1, role: "admin" });
+    }
+
+    return Promise.resolve(null);
+  });
 });
 
 // ---------------------------------------------------------------------------
