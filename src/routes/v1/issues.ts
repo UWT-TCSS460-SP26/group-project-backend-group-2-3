@@ -6,8 +6,8 @@ import {
   listIssues,
   updateIssue,
 } from '../../controllers/v1/issues';
-import { requireAuth, requireRole } from '../../middleware/requireAuth';
-import { USER_ROLES } from '../../types/auth';
+import { requireAuth } from '../../middleware/requireAuth';
+import { requireLocalRole } from '../../middleware/requireLocalRole';
 
 const router = Router();
 
@@ -15,11 +15,10 @@ const router = Router();
 router.post('/', createIssue);
 
 // Admin-gated bug-tracker queue (Sprint 4 / S4-00, S4-01).
-// `requireRole(USER_ROLES.admin)` uses `hasRoleAtLeast`, so Admin, SuperAdmin,
-// and Owner all pass while User and Moderator are rejected with 403.
-router.get('/', requireAuth, requireRole(USER_ROLES.admin), listIssues);
-router.get('/:id', requireAuth, requireRole(USER_ROLES.admin), getIssueById);
-router.patch('/:id', requireAuth, requireRole(USER_ROLES.admin), updateIssue);
-router.delete('/:id', requireAuth, requireRole(USER_ROLES.admin), deleteIssue);
+// Auth2 token verifies identity; local DB role (`User.role`) determines admin access.
+router.get('/', requireAuth, requireLocalRole('admin'), listIssues);
+router.get('/:id', requireAuth, requireLocalRole('admin'), getIssueById);
+router.patch('/:id', requireAuth, requireLocalRole('admin'), updateIssue);
+router.delete('/:id', requireAuth, requireLocalRole('admin'), deleteIssue);
 
 export { router as issuesRouter };

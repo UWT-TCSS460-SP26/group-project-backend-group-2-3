@@ -32,6 +32,11 @@ Use the token as:
 
 - `Authorization: Bearer <token>`
 
+Admin note for issue queue routes:
+
+- Auth2 token role may still be User.
+- Admin authorization for issue queue routes is determined from the local database user role.
+
 ### 3) What endpoints exist?
 
 Use the OpenAPI contract as source of truth:
@@ -119,7 +124,8 @@ The server uses `PORT` from the environment and defaults to `3000`.
 Copy `.env.example` to `.env` and set:
 
 - `TMDB_API_KEY` for TMDB proxy and enrichment routes.
-- `DATABASE_URL` for local PostgreSQL.
+- `DATABASE_URL` for local PostgreSQL (Docker fast path: `postgresql://postgres:password@localhost:5433/tcss460`).
+- Prisma Studio v7 note: do not add `?schema=public` to this URL.
 - `AUTH_ISSUER=https://tcss-460-iam.onrender.com`
 - `API_AUDIENCE=group-2-api`
 - `CORS_ALLOWED_ORIGINS` as a comma-separated allowlist.
@@ -180,7 +186,7 @@ npx prisma generate
 npm test
 ```
 
-Tests load defaults from `tests/setup.ts`, so a `.env` file is not required just to run tests.
+Tests use `TEST_DATABASE_URL` when set; otherwise they use the Docker default `postgresql://postgres:password@localhost:5433/tcss460`. Jest intentionally ignores app `DATABASE_URL` values to keep test runs deterministic.
 
 ## Route and Controller Layout
 
