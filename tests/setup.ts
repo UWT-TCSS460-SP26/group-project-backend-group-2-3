@@ -1,4 +1,5 @@
-const defaultTestDatabaseUrl = 'postgresql://postgres:password@localhost:5433/tcss460?schema=public';
+const defaultTestDatabaseUrl =
+  'postgresql://postgres:password@localhost:5433/tcss460?schema=public';
 
 // Keep test DB config deterministic so local .env DATABASE_URL values (for app runtime)
 // do not accidentally break the Jest suite.
