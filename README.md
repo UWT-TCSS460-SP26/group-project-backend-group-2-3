@@ -186,7 +186,7 @@ npx prisma generate
 npm test
 ```
 
-Tests use `TEST_DATABASE_URL` when set; otherwise they use the Docker default `postgresql://postgres:password@localhost:5433/tcss460`. Jest intentionally ignores app `DATABASE_URL` values to keep test runs deterministic.
+Tests resolve the database URL in this order: `TEST_DATABASE_URL`, then existing `DATABASE_URL`, then the Docker default `postgresql://postgres:password@localhost:5433/tcss460`.
 
 ## Route and Controller Layout
 

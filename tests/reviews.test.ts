@@ -1,5 +1,3 @@
-process.env.DATABASE_URL ??= 'postgresql://postgres:password@localhost:5433/tcss460?schema=public';
-
 import request from 'supertest';
 import { USER_ROLES } from '../src/types/auth';
 import { authHeader, createAccessToken } from './support/auth-fixtures';

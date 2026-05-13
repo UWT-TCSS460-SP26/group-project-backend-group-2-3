@@ -1,9 +1,14 @@
 const defaultTestDatabaseUrl =
   'postgresql://postgres:password@localhost:5433/tcss460?schema=public';
 
-// Keep test DB config deterministic so local .env DATABASE_URL values (for app runtime)
-// do not accidentally break the Jest suite.
-process.env.DATABASE_URL = process.env.TEST_DATABASE_URL?.trim() || defaultTestDatabaseUrl;
+// Resolve the Jest DB URL in this order:
+// 1) TEST_DATABASE_URL for explicit test targeting
+// 2) existing DATABASE_URL (used by CI workflows/services)
+// 3) local Docker default fallback
+process.env.DATABASE_URL =
+  process.env.TEST_DATABASE_URL?.trim() ||
+  process.env.DATABASE_URL?.trim() ||
+  defaultTestDatabaseUrl;
 
 process.env.TMDB_API_KEY ??= 'test-tmdb-api-key';
 process.env.TMDB_BASE_URL ??= 'https://api.themoviedb.org/3';
