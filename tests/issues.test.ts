@@ -42,8 +42,8 @@ beforeEach(() => {
   jest.resetAllMocks();
 
   mockUserFindUnique.mockImplementation(({ where }: { where?: { subjectId?: string } }) => {
-    if (where?.subjectId && String(where.subjectId).startsWith("auth2|test-user-")) {
-      return Promise.resolve({ id: 1, role: "admin" });
+    if (where?.subjectId && String(where.subjectId).startsWith('auth2|test-user-')) {
+      return Promise.resolve({ id: 1, role: 'admin' });
     }
 
     return Promise.resolve(null);
