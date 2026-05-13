@@ -27,6 +27,7 @@ jobs:
 
     env:
       DATABASE_URL: postgresql://postgres:password@localhost:5432/tcss460?schema=public
+      TEST_DATABASE_URL: postgresql://postgres:password@localhost:5432/tcss460?schema=public
 
     steps:
       - uses: actions/checkout@v5
