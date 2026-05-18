@@ -79,7 +79,7 @@ The API allows the `Authorization` header in preflight, so authenticated browser
 
 Planned Bug Tracker FE URL (Sprint 5):
 
-- `https://group-2-bug-tracker-fe.onrender.com` (planned)
+- `https://bug-tracker-g2.vercel.app` 
 
 Until that FE is deployed, submit directly to the public bug-report API:
 
