@@ -98,6 +98,7 @@ describe('GET /api/v1/me/ratings', () => {
     const item = res.body.results[0];
     expect(item).toMatchObject({
       id: baseRatingResponse.id,
+      tmdbId: 550,
       score: baseRatingResponse.score,
       mediaType: 'movie',
       author: { id: 1, username: 'alice' },
@@ -156,6 +157,7 @@ describe('GET /api/v1/me/ratings', () => {
 
     expect(res.status).toBe(200);
     expect(res.body.results).toHaveLength(1);
+    expect(res.body.results[0].tmdbId).toBe(550);
     expect(res.body.results[0].tmdb).toBeNull();
   });
 

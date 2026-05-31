@@ -122,6 +122,21 @@ describe('author surface across HTTP list/detail and /me routes', () => {
 
   it('GET /api/v1/me/reviews includes author on each result', async () => {
     mockTransaction.mockResolvedValueOnce([1, [buildReviewRecord({ id: 501 })]]);
+    const mockTmdbFetchResult = {
+      ok: true,
+      json: async () => ({
+        id: 550,
+        title: 'Fight Club',
+        overview: 'x',
+        poster_path: '/p.jpg',
+        release_date: '1999-10-15',
+      }),
+    };
+    jest
+      .spyOn(globalThis, 'fetch')
+      .mockResolvedValue(
+        mockTmdbFetchResult as unknown as Awaited<ReturnType<typeof globalThis.fetch>>
+      );
 
     const res = await request(app)
       .get('/api/v1/me/reviews')
@@ -129,5 +144,8 @@ describe('author surface across HTTP list/detail and /me routes', () => {
 
     expect(res.status).toBe(200);
     expect(res.body.results[0].author).toEqual(authorShape);
+    expect(res.body.results[0].tmdbId).toBe(550);
+    expect(res.body.results[0].tmdb).toEqual(expect.objectContaining({ title: 'Fight Club' }));
+    (globalThis.fetch as jest.Mock).mockRestore();
   });
 });

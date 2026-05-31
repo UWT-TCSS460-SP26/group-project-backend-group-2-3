@@ -2,6 +2,7 @@ import { Prisma, MediaType } from '@prisma/client';
 import { Request, Response, NextFunction } from 'express';
 import { prisma } from '../../lib/prisma';
 import { resolveLocalUser } from '../../services/local-user';
+import { fetchTmdbMeta } from '../../services/tmdb-meta';
 import { HttpError } from '../../errors/http-error';
 import { HTTP_STATUS } from '../../types/api';
 import { parseMediaTargetFilters, parsePaginationQuery } from '../../utils/request-parsing';
@@ -258,14 +259,15 @@ export const listMyReviews = async (
       }),
     ]);
 
-    response.status(200).json(
-      toPaginatedResponse({
-        page,
-        pageSize,
-        totalResults,
-        results: reviews.map((review) => toReviewResponse(review)),
-      })
+    const results = await Promise.all(
+      reviews.map(async (review) => ({
+        ...toReviewResponse(review),
+        tmdbId: review.tmdbId,
+        tmdb: await fetchTmdbMeta(review.tmdbId, review.mediaType),
+      }))
     );
+
+    response.status(200).json(toPaginatedResponse({ page, pageSize, totalResults, results }));
   } catch (error) {
     next(error);
   }

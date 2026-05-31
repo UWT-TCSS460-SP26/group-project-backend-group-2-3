@@ -42,7 +42,7 @@ tags:
   - name: Issues
     description: Public bug report intake — no authentication required
   - name: Me
-    description: Authenticated user's own content (ratings, future reviews)
+    description: Authenticated user's own content (ratings and reviews)
 
 paths:
   /health:
@@ -921,9 +921,12 @@ paths:
 
   /v1/me/reviews:
     get:
-      tags: [Reviews]
+      tags: [Me]
       summary: List my reviews
-      description: Returns the authenticated caller's own reviews. The server identifies the caller from the bearer token only and ignores any caller-supplied userId query parameter.
+      description: >
+        Returns a paginated list of the authenticated user's reviews, each enriched with TMDB metadata.
+        The caller is always determined from the JWT — query parameters cannot override identity.
+        If TMDB is unavailable for a given item, the `tmdb` field is `null` rather than failing the whole request.
       security:
         - bearerAuth: []
       parameters:
@@ -957,11 +960,11 @@ paths:
           example: 'createdAt:desc'
       responses:
         '200':
-          description: Paginated list of the authenticated user's reviews
+          description: Paginated list of enriched reviews
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/ReviewListResponse'
+                $ref: '#/components/schemas/EnrichedReviewListResponse'
               examples:
                 success:
                   value:
@@ -971,6 +974,7 @@ paths:
                     totalResults: 1
                     results:
                       - id: 101
+                        tmdbId: 550
                         mediaType: movie
                         title: Great watch
                         body: This movie stayed sharp, focused, and worth revisiting.
@@ -979,6 +983,30 @@ paths:
                         author:
                           id: 1
                           username: reviews-int-owner
+                        tmdb:
+                          title: Fight Club
+                          year: 1999
+                          posterUrl: https://image.tmdb.org/t/p/w500/poster.jpg
+                          overview: An insomniac office worker crosses paths with a soap maker.
+                tmdbUnavailable:
+                  summary: TMDB upstream failure — tmdb is null
+                  value:
+                    page: 1
+                    pageSize: 1
+                    totalPages: 1
+                    totalResults: 1
+                    results:
+                      - id: 101
+                        tmdbId: 550
+                        mediaType: movie
+                        title: Great watch
+                        body: This movie stayed sharp, focused, and worth revisiting.
+                        createdAt: '2026-04-26T18:30:00.000Z'
+                        updatedAt: '2026-04-26T18:30:00.000Z'
+                        author:
+                          id: 1
+                          username: reviews-int-owner
+                        tmdb: null
         '400':
           description: Invalid query parameters
           content:
@@ -2428,6 +2456,49 @@ components:
         overview:
           type: string
           example: An insomniac office worker crosses paths with a soap maker.
+
+    EnrichedReviewResponse:
+      allOf:
+        - $ref: '#/components/schemas/ReviewResponse'
+        - type: object
+          required:
+            - tmdbId
+            - tmdb
+          properties:
+            tmdbId:
+              type: integer
+              example: 550
+            tmdb:
+              nullable: true
+              oneOf:
+                - $ref: '#/components/schemas/TmdbMeta'
+                - type: 'null'
+
+    EnrichedReviewListResponse:
+      type: object
+      required:
+        - page
+        - pageSize
+        - totalPages
+        - totalResults
+        - results
+      properties:
+        page:
+          type: integer
+          example: 1
+        pageSize:
+          type: integer
+          example: 10
+        totalPages:
+          type: integer
+          example: 1
+        totalResults:
+          type: integer
+          example: 1
+        results:
+          type: array
+          items:
+            $ref: '#/components/schemas/EnrichedReviewResponse'
 
     EnrichedRatingResponse:
       allOf:
