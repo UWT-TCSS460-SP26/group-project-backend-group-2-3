@@ -128,6 +128,8 @@ Copy `.env.example` to `.env` and set:
 - Prisma Studio v7 note: do not add `?schema=public` to this URL.
 - `AUTH_ISSUER=https://tcss-460-iam.onrender.com`
 - `API_AUDIENCE=group-2-api`
+- `ADMIN_SUBJECT_ID` optionally promotes that Auth² `sub` to a database admin
+  during deployment.
 - `CORS_ALLOWED_ORIGINS` as a comma-separated allowlist.
 
 Local docs are available at:
@@ -161,6 +163,28 @@ The seed is idempotent and ensures an admin account with:
 
 - username `admin`
 - email `admin@dev.local`
+
+## Render Deployment
+
+Use:
+
+```bash
+# Build command
+npm ci --include=dev && npx prisma generate && npm run build
+
+# Start command
+npx prisma migrate deploy && npm run bootstrap:admin && npm run start
+```
+
+For a new Render database, add `ADMIN_SUBJECT_ID` to the backend service's
+environment variables. Set it to the Auth² token subject for the administrator
+(for example, `14`). The bootstrap is idempotent: on every deploy it promotes
+that subject's existing user row to `admin`, or creates a placeholder admin row
+when the database is empty. A later authenticated profile/write request keeps
+using the same subject and database user.
+
+Do not put bearer tokens in Render environment variables. Only store the stable
+Auth² subject identifier.
 
 Sprint 3 migration behavior:
 
