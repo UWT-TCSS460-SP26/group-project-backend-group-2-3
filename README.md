@@ -77,11 +77,11 @@ The API allows the `Authorization` header in preflight, so authenticated browser
 
 ### 5) Where do I file bug reports?
 
-Planned Bug Tracker FE URL (Sprint 5):
+Deployed Bug Tracker FE:
 
-- `https://bug-tracker-g2.vercel.app` 
+- `https://bug-tracker-g2.vercel.app`
 
-Until that FE is deployed, submit directly to the public bug-report API:
+Reports can also be submitted directly to the public bug-report API:
 
 - `POST https://group-2-9289.onrender.com/v1/issues`
 
