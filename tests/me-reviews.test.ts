@@ -66,11 +66,12 @@ describe('listMyReviews', () => {
     mockResolveLocalUser.mockResolvedValue({
       id: 42,
     } as Awaited<ReturnType<typeof resolveLocalUser>>);
-    mockFetch.mockImplementation(async () =>
-      new globalThis.Response(JSON.stringify(mockTmdbMovieJson), {
-        status: 200,
-        headers: { 'Content-Type': 'application/json' },
-      })
+    mockFetch.mockImplementation(
+      async () =>
+        new globalThis.Response(JSON.stringify(mockTmdbMovieJson), {
+          status: 200,
+          headers: { 'Content-Type': 'application/json' },
+        })
     );
   });
 
